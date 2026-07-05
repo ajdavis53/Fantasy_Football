@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+data/cache/
+*.egg-info/
+.DS_Store
+draft_state_*.json

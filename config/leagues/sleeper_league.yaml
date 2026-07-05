@@ -1,0 +1,58 @@
+# Settings for the Sleeper league. Once integrations/sleeper_client.py
+# exists (Phase 3), scoring/roster_slots/num_teams below can be auto-pulled
+# from Sleeper's league API instead of hand-maintained here.
+# TODO: fill in league_id/draft_id and confirm the values below match Sleeper.
+
+name: "Sleeper League (TODO: real name)"
+num_teams: 12          # TODO: confirm team count
+draft_slot: 1           # TODO: your draft position, 1-indexed
+
+roster_slots:
+  - name: QB
+    positions: [QB]
+    count: 1
+  - name: RB
+    positions: [RB]
+    count: 2
+  - name: WR
+    positions: [WR]
+    count: 2
+  - name: TE
+    positions: [TE]
+    count: 1
+  - name: FLEX
+    positions: [RB, WR, TE]
+    count: 1
+  - name: K
+    positions: [K]
+    count: 1
+  - name: DEF
+    positions: [DEF]
+    count: 1
+  - name: BENCH
+    positions: [QB, RB, WR, TE, K, DEF]
+    count: 6
+
+# Points per unit of each stat category. TODO: confirm against Sleeper's
+# scoring_settings for this league (this template assumes standard PPR).
+scoring:
+  pass_yd: 0.04
+  pass_td: 4
+  pass_int: -2
+  rush_yd: 0.1
+  rush_td: 6
+  rec: 1.0
+  rec_yd: 0.1
+  rec_td: 6
+  fumble_lost: -2
+
+bench_offsets:
+  QB: 3
+  RB: 6
+  WR: 6
+  TE: 3
+  K: 1
+  DEF: 1
+
+league_id: null   # TODO: Sleeper league_id
+draft_id: null    # TODO: Sleeper draft_id (available once the draft is created)

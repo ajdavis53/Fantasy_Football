@@ -1,0 +1,40 @@
+name: "Test League"
+num_teams: 4
+draft_slot: 2
+
+roster_slots:
+  - name: QB
+    positions: [QB]
+    count: 1
+  - name: RB
+    positions: [RB]
+    count: 1
+  - name: WR
+    positions: [WR]
+    count: 1
+  - name: FLEX
+    positions: [RB, WR, TE]
+    count: 1
+  - name: BENCH
+    positions: [QB, RB, WR, TE, K, DEF]
+    count: 2
+
+scoring:
+  pass_yd: 0.04
+  pass_td: 4
+  rush_yd: 0.1
+  rush_td: 6
+  rec: 1.0
+  rec_yd: 0.1
+  rec_td: 6
+
+bench_offsets:
+  QB: 1
+  RB: 2
+  WR: 2
+  TE: 1
+  K: 1
+  DEF: 1
+
+league_id: null
+draft_id: null
