@@ -1,9 +1,16 @@
-"""Parse a user-supplied Establish The Run (ETR) rankings CSV.
+"""Parse a user-supplied Establish The Run (ETR) rankings export.
 
-ETR's exact export schema hasn't been confirmed yet, so column matching is
-alias-based (case/whitespace-insensitive) rather than hardcoded to exact
-header names, and callers can pass explicit overrides for any column ETR
-names differently than expected.
+Handles both `.xlsx` (ETR's native cheat-sheet download) and `.csv`. For
+workbooks, the default sheet is ETR's "Full Ledger" tab -- the machine-
+readable one carrying ADP; the "Cheat Sheet" tab is a printable six-column
+layout of the same players, colour-coded by position, with no extra data.
+
+Column matching is alias-based (case/whitespace-insensitive) rather than
+hardcoded, and callers can override any column ETR renames.
+
+Note that ETR's Top-300 export carries no projected points and no tier
+column -- see `data/projections.py`, which turns these ranks into the point
+values VBD needs.
 
 Canonical player IDs are synthesized from name+team+position (a stable,
 human-readable slug) rather than pulled from an external ID system, so this
@@ -19,6 +26,8 @@ from pathlib import Path
 
 from data.models import Player, PlayerRanking, Position
 
+DEFAULT_SHEET_NAME = "Full Ledger"
+
 # Canonical field -> acceptable column header aliases (matched case/whitespace-insensitively).
 DEFAULT_COLUMN_ALIASES: dict[str, list[str]] = {
     "name": ["player", "name", "player name"],
@@ -27,6 +36,8 @@ DEFAULT_COLUMN_ALIASES: dict[str, list[str]] = {
     "rank": ["rank", "overall rank", "ecr", "overall"],
     "tier": ["tier"],
     "projected_points": ["proj", "projection", "points", "fpts", "projected points"],
+    "pos_rank": ["pos rank", "positional rank", "position rank"],
+    "adp": ["adp", "average draft position"],
 }
 
 REQUIRED_FIELDS = ("name", "position", "rank")
@@ -102,69 +113,123 @@ def _parse_optional_float(raw: str | None) -> float | None:
     return float(raw)
 
 
-def load_etr_rankings(
-    path: str | Path,
-    source: str = "ETR",
-    column_overrides: dict[str, str] | None = None,
-) -> tuple[list[Player], list[PlayerRanking]]:
-    """Parse an ETR rankings CSV into (players, rankings), aligned by player_id."""
-    path = Path(path)
+def _parse_pos_rank(raw: str | None) -> int | None:
+    """ETR writes positional rank as e.g. "RB01" / "WR07"; pull out the number."""
+    if raw is None or not raw.strip():
+        return None
+    match = re.search(r"(\d+)", raw)
+    return int(match.group(1)) if match else None
+
+
+def _read_csv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with path.open(newline="") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
             raise ETRIngestError(f"{path} has no header row")
-        fieldnames = list(reader.fieldnames)
-        duplicate_headers = {h for h in fieldnames if fieldnames.count(h) > 1}
-        if duplicate_headers:
-            raise ETRIngestError(f"{path} has duplicate column header(s): {sorted(duplicate_headers)}")
-        column_map = resolve_column_map(fieldnames, column_overrides)
+        return list(reader.fieldnames), [dict(row) for row in reader]
 
-        players: list[Player] = []
-        rankings: list[PlayerRanking] = []
-        seen_player_ids: dict[str, str] = {}
-        for row_num, row in enumerate(reader, start=2):
-            name = row[column_map["name"]].strip()
-            if not name:
-                continue
-            team = row[column_map["team"]].strip() if "team" in column_map else None
-            position = _parse_position(row[column_map["position"]])
-            rank_raw = row[column_map["rank"]]
-            try:
-                rank = int(float(rank_raw))
-            except ValueError as exc:
-                raise ETRIngestError(f"{path} row {row_num}: invalid rank {rank_raw!r} for {name!r}") from exc
-            tier = _parse_optional_int(row.get(column_map.get("tier", ""), None)) if "tier" in column_map else None
-            projected_points = (
-                _parse_optional_float(row.get(column_map.get("projected_points", ""), None))
-                if "projected_points" in column_map
-                else None
-            )
 
-            player_id = slugify_player_id(name, team, position)
-            if player_id in seen_player_ids:
-                raise ETRIngestError(
-                    f"{path} row {row_num}: {name!r} ({team}, {position.value}) collides with row "
-                    f"{seen_player_ids[player_id]} on player_id {player_id!r}"
-                )
-            seen_player_ids[player_id] = str(row_num)
-            players.append(
-                Player(
-                    player_id=player_id,
-                    name=name,
-                    nfl_team=team or None,
-                    position=position,
-                    eligible_positions=frozenset({position}),
-                )
-            )
-            rankings.append(
-                PlayerRanking(
-                    player_id=player_id,
-                    source=source,
-                    rank=rank,
-                    tier=tier,
-                    position=position,
-                    projected_points=projected_points,
-                )
-            )
+def _read_xlsx_rows(path: Path, sheet_name: str) -> tuple[list[str], list[dict[str, str]]]:
+    import openpyxl
 
-        return players, rankings
+    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    if sheet_name not in workbook.sheetnames:
+        raise ETRIngestError(
+            f"{path} has no sheet named {sheet_name!r}; available sheets: {workbook.sheetnames}"
+        )
+    sheet = workbook[sheet_name]
+
+    rows_iter = sheet.iter_rows(values_only=True)
+    try:
+        header_row = next(rows_iter)
+    except StopIteration:
+        raise ETRIngestError(f"{path} sheet {sheet_name!r} is empty") from None
+
+    fieldnames = ["" if cell is None else str(cell).strip() for cell in header_row]
+    rows = []
+    for raw_row in rows_iter:
+        if all(cell is None for cell in raw_row):
+            continue
+        rows.append(
+            {
+                field: ("" if cell is None else str(cell))
+                for field, cell in zip(fieldnames, raw_row)
+                if field
+            }
+        )
+    workbook.close()
+    return [f for f in fieldnames if f], rows
+
+
+def load_etr_rankings(
+    path: str | Path,
+    source: str = "ETR",
+    column_overrides: dict[str, str] | None = None,
+    sheet_name: str = DEFAULT_SHEET_NAME,
+) -> tuple[list[Player], list[PlayerRanking]]:
+    """Parse an ETR rankings export (.xlsx or .csv) into (players, rankings), aligned by player_id."""
+    path = Path(path)
+    if path.suffix.lower() in (".xlsx", ".xlsm"):
+        fieldnames, rows = _read_xlsx_rows(path, sheet_name)
+    else:
+        fieldnames, rows = _read_csv_rows(path)
+
+    duplicate_headers = {h for h in fieldnames if fieldnames.count(h) > 1}
+    if duplicate_headers:
+        raise ETRIngestError(f"{path} has duplicate column header(s): {sorted(duplicate_headers)}")
+    column_map = resolve_column_map(fieldnames, column_overrides)
+
+    players: list[Player] = []
+    rankings: list[PlayerRanking] = []
+    seen_player_ids: dict[str, str] = {}
+    for row_num, row in enumerate(rows, start=2):
+        name = row[column_map["name"]].strip()
+        if not name:
+            continue
+        team = row[column_map["team"]].strip() if "team" in column_map else None
+        position = _parse_position(row[column_map["position"]])
+        rank_raw = row[column_map["rank"]]
+        try:
+            rank = int(float(rank_raw))
+        except ValueError as exc:
+            raise ETRIngestError(f"{path} row {row_num}: invalid rank {rank_raw!r} for {name!r}") from exc
+
+        def _optional(field: str, parse):
+            column = column_map.get(field)
+            return parse(row.get(column)) if column else None
+
+        tier = _optional("tier", _parse_optional_int)
+        projected_points = _optional("projected_points", _parse_optional_float)
+        pos_rank = _optional("pos_rank", _parse_pos_rank)
+        adp = _optional("adp", _parse_optional_float)
+
+        player_id = slugify_player_id(name, team, position)
+        if player_id in seen_player_ids:
+            raise ETRIngestError(
+                f"{path} row {row_num}: {name!r} ({team}, {position.value}) collides with row "
+                f"{seen_player_ids[player_id]} on player_id {player_id!r}"
+            )
+        seen_player_ids[player_id] = str(row_num)
+        players.append(
+            Player(
+                player_id=player_id,
+                name=name,
+                nfl_team=team or None,
+                position=position,
+                eligible_positions=frozenset({position}),
+            )
+        )
+        rankings.append(
+            PlayerRanking(
+                player_id=player_id,
+                source=source,
+                rank=rank,
+                tier=tier,
+                position=position,
+                projected_points=projected_points,
+                pos_rank=pos_rank,
+                adp=adp,
+            )
+        )
+
+    return players, rankings

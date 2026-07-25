@@ -57,6 +57,22 @@ class PlayerRanking:
     tier: int | None
     position: Position
     projected_points: float | None = None
+    pos_rank: int | None = None
+    """Rank within position (ETR's "RB01" -> 1)."""
+    adp: float | None = None
+    """Average draft position, i.e. where the market actually takes this player."""
+
+    @property
+    def rank_diff(self) -> float | None:
+        """ADP minus rank: how much later than this source's rank the market drafts them.
+
+        Positive means the source rates the player higher than the market does
+        (a value/bargain); negative means the market reaches relative to the
+        source (a fade candidate).
+        """
+        if self.adp is None:
+            return None
+        return self.adp - self.rank
 
 
 @dataclass(frozen=True)
