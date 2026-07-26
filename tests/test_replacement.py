@@ -50,23 +50,27 @@ def test_baselines_clamp_gracefully_when_pool_is_small(test_league):
     assert baselines[Position.QB]["VORP"] == pytest.approx(100)
 
 
-def test_zero_demand_position_gets_zero_baseline(test_league):
-    """K has no dedicated slot and isn't FLEX-eligible in test_league.yaml, so it
-    has zero roster demand -- the baseline should be 0.0, not the #1 K's value.
-    (Uses a league clone with no K bench_offset, since a nonzero offset would
-    itself push VORP's rank above zero -- a real league wouldn't configure a
-    bench_offset for a position nobody rosters.)"""
-    import dataclasses
+def test_positions_with_demand_ignores_bench(test_league):
+    """test_league.yaml starts QB/RB/WR + a RB/WR/TE flex, and benches anything.
+    A position only the bench accepts is not real demand."""
+    from engine.replacement import positions_with_demand
 
-    from engine.replacement import PlayerValue
+    demand = positions_with_demand(test_league)
+    assert demand == frozenset({Position.QB, Position.RB, Position.WR, Position.TE})
+    assert Position.K not in demand
+    assert Position.DEF not in demand
 
-    league = dataclasses.replace(
-        test_league, bench_offsets={k: v for k, v in test_league.bench_offsets.items() if k != Position.K}
-    )
-    kickers = [
+
+def test_unstartable_positions_are_filtered_out(test_league):
+    """A league with no kicker slot must not surface kickers at all. Left in,
+    they get a zero baseline, bank their whole projection as value over
+    replacement, and outrank real picks."""
+    from engine.replacement import PlayerValue, filter_to_rosterable
+
+    values = [
+        PlayerValue(player_id="rb0", position=Position.RB, value=250),
         PlayerValue(player_id="k0", position=Position.K, value=150),
-        PlayerValue(player_id="k1", position=Position.K, value=120),
+        PlayerValue(player_id="def0", position=Position.DEF, value=140),
     ]
-    baselines = compute_replacement_baselines(kickers, league)
-    assert baselines[Position.K]["VOLS"] == pytest.approx(0.0)
-    assert baselines[Position.K]["VORP"] == pytest.approx(0.0)
+    kept = filter_to_rosterable(values, test_league)
+    assert [pv.player_id for pv in kept] == ["rb0"]

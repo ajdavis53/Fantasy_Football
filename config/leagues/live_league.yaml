@@ -1,10 +1,13 @@
-# Settings for the live, in-person league. No API exists for this league --
-# fill these in by hand to match your actual league rules before Phase 1/2.
-# TODO: replace every value below with your league's real settings.
+# The live, in-person league. No platform API exists for this one -- picks are
+# entered by hand during the draft.
+#
+# Note there is no K and no DEF slot: kickers and defenses are undraftable
+# here, and the board filters them out entirely (see engine/replacement.py's
+# positions_with_demand).
 
-name: "Live League (TODO: real name)"
-num_teams: 12          # TODO: confirm team count
-draft_slot: 1           # TODO: your draft position, 1-indexed
+name: "Live League"
+num_teams: 12
+draft_slot: 1           # TODO: set once the draft order is known; overridable at runtime
 
 roster_slots:
   - name: QB
@@ -21,38 +24,34 @@ roster_slots:
     count: 1
   - name: FLEX
     positions: [RB, WR, TE]
-    count: 1
-  - name: K
-    positions: [K]
-    count: 1
-  - name: DEF
-    positions: [DEF]
-    count: 1
+    count: 3
   - name: BENCH
-    positions: [QB, RB, WR, TE, K, DEF]
-    count: 6
+    positions: [QB, RB, WR, TE]
+    count: 7
 
-# Points per unit of each stat category. TODO: confirm against your league's
-# actual scoring rules (this template assumes standard half-PPR).
+# Full PPR. Yardage-milestone bonuses vary in this league but are small and
+# roughly position-neutral, so they are omitted rather than guessed at -- they
+# would shift every player at a position by a similar amount and leave the
+# value ordering essentially unchanged.
 scoring:
   pass_yd: 0.04
   pass_td: 4
   pass_int: -2
   rush_yd: 0.1
   rush_td: 6
-  rec: 0.5
+  rec: 1.0
   rec_yd: 0.1
   rec_td: 6
   fumble_lost: -2
 
-# Per-position VORP baseline offset beyond the last starter (tunable).
+# Replacement baseline depth beyond the last starter, per position. With three
+# flex spots and seven bench slots, teams stash far more RB/WR than usual, so
+# the freely-available replacement sits deeper than in a standard league.
 bench_offsets:
-  QB: 3
-  RB: 6
-  WR: 6
+  QB: 2
+  RB: 8
+  WR: 8
   TE: 3
-  K: 1
-  DEF: 1
 
 league_id: null
 draft_id: null

@@ -18,6 +18,33 @@ class PlayerValue:
     value: float
 
 
+def positions_with_demand(league: LeagueSettings) -> frozenset[Position]:
+    """Positions this league can actually start.
+
+    Derived from starter slots only, deliberately ignoring the bench: a
+    league with no kicker slot has no reason to roster a kicker, even if its
+    bench nominally accepts any position.
+    """
+    positions: set[Position] = set()
+    for slot in league.roster_slots.starter_slots():
+        positions.update(slot.eligible_positions)
+    return frozenset(positions)
+
+
+def filter_to_rosterable(
+    player_values: list[PlayerValue], league: LeagueSettings
+) -> list[PlayerValue]:
+    """Drop players whose position this league cannot start.
+
+    Without this, a position with no starter slot gets a replacement baseline
+    of zero, so its players score their *entire* projected total as value over
+    replacement and float to the top of the board -- e.g. kickers outranking
+    real picks in a league that cannot start one.
+    """
+    rosterable = positions_with_demand(league)
+    return [pv for pv in player_values if pv.position in rosterable]
+
+
 def _group_by_position_sorted(player_values: list[PlayerValue]) -> dict[Position, list[PlayerValue]]:
     by_position: dict[Position, list[PlayerValue]] = {}
     for pv in player_values:

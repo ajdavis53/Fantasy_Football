@@ -15,7 +15,7 @@ import argparse
 from config.settings import load_league_settings
 from data.ingest_etr import load_etr_rankings
 from data.projections import fit_positional_curves, project_points
-from engine.replacement import PlayerValue
+from engine.replacement import PlayerValue, filter_to_rosterable
 from engine.tiers import compute_gap_tiers, tiers_from_rankings
 from engine.vbd import compute_vbd
 
@@ -28,16 +28,22 @@ def build_board(league_path: str, etr_path: str) -> list[dict]:
     curves = fit_positional_curves(league.scoring)
     points = project_points(rankings, curves)
 
-    player_values = [
-        PlayerValue(player_id=r.player_id, position=r.position, value=points[r.player_id])
-        for r in rankings
-    ]
+    player_values = filter_to_rosterable(
+        [
+            PlayerValue(player_id=r.player_id, position=r.position, value=points[r.player_id])
+            for r in rankings
+        ],
+        league,
+    )
+    rosterable_ids = {pv.player_id for pv in player_values}
 
     vbd = compute_vbd(player_values, league, baseline="VORP")
     tiers = tiers_from_rankings(rankings) or compute_gap_tiers(player_values)
 
     board = []
     for r in rankings:
+        if r.player_id not in rosterable_ids:
+            continue
         player = players_by_id[r.player_id]
         board.append(
             {
