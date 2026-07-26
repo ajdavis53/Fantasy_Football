@@ -127,6 +127,20 @@ class RosterSlots:
         return sum(s.count for s in self.slots)
 
 
+@dataclass(frozen=True)
+class Keeper:
+    """A player retained before the draft, at the cost of one round's pick.
+
+    `team_slot` is 1-indexed to match `LeagueSettings.draft_slot`. `round` is
+    the round whose pick that team forfeits; teams may keep different numbers
+    of players, so the draft order ends up with per-team holes.
+    """
+
+    team_slot: int
+    player_name: str
+    round: int
+
+
 @dataclass
 class LeagueSettings:
     name: str
@@ -137,7 +151,13 @@ class LeagueSettings:
     """1-indexed position this user picks from in round 1."""
     bench_offsets: dict[Position, int] = field(default_factory=dict)
     """Per-position VORP baseline offset beyond the last starter (tunable)."""
+    keepers: tuple[Keeper, ...] = ()
     league_id: str | None = None
     """Sleeper league_id, if this league is API-backed."""
     draft_id: str | None = None
     """Sleeper draft_id, if this league is API-backed."""
+
+    @property
+    def rounds(self) -> int:
+        """One round per roster spot; keepers consume roster spots and picks alike."""
+        return self.roster_slots.roster_size()

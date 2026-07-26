@@ -53,5 +53,15 @@ bench_offsets:
   WR: 8
   TE: 3
 
+# Keepers cost the team that round's pick, and teams keep different numbers,
+# so the draft order ends up with per-team holes. Fill this in once keepers
+# are declared; an empty list runs a plain snake draft.
+#
+#   keepers:
+#     - team_slot: 3        # 1-indexed draft position of the team keeping him
+#       player: "Bijan Robinson"
+#       round: 2            # the round pick that team forfeits
+keepers: []
+
 league_id: null
 draft_id: null

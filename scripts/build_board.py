@@ -14,6 +14,7 @@ import argparse
 
 from config.settings import load_league_settings
 from data.ingest_etr import load_etr_rankings
+from data.name_matching import resolve_keepers
 from data.projections import fit_positional_curves, project_points
 from engine.replacement import PlayerValue, filter_to_rosterable
 from engine.tiers import compute_gap_tiers, tiers_from_rankings
@@ -28,10 +29,15 @@ def build_board(league_path: str, etr_path: str) -> list[dict]:
     curves = fit_positional_curves(league.scoring)
     points = project_points(rankings, curves)
 
+    # Kept players are already rostered, so they are off the board and out of
+    # the replacement-level math -- leaving them in would understate scarcity.
+    kept_ids = set(resolve_keepers(league.keepers, players).values())
+
     player_values = filter_to_rosterable(
         [
             PlayerValue(player_id=r.player_id, position=r.position, value=points[r.player_id])
             for r in rankings
+            if r.player_id not in kept_ids
         ],
         league,
     )

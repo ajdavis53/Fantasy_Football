@@ -53,5 +53,8 @@ bench_offsets:
   TE: 3
   DEF: 1
 
+# See live_league.yaml for the format. Empty means a plain snake draft.
+keepers: []
+
 league_id: null   # TODO: Sleeper league_id
 draft_id: null    # TODO: Sleeper draft_id (exists once the draft is created)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from data.models import LeagueSettings, Position, RosterSlot, RosterSlots, ScoringRules
+from data.models import Keeper, LeagueSettings, Position, RosterSlot, RosterSlots, ScoringRules
 
 
 class LeagueConfigError(ValueError):
@@ -65,6 +65,43 @@ def _parse_bench_offsets(raw: dict | None) -> dict[Position, int]:
     return result
 
 
+def _parse_keepers(raw: list | None, num_teams: int, rounds: int) -> tuple[Keeper, ...]:
+    if not raw:
+        return ()
+
+    keepers = []
+    claimed: dict[tuple[int, int], str] = {}
+    for entry in raw:
+        try:
+            team_slot = entry["team_slot"]
+            player_name = entry["player"]
+            round_num = entry["round"]
+        except (KeyError, TypeError) as exc:
+            raise LeagueConfigError(
+                f"keeper entry {entry!r} needs 'team_slot', 'player' and 'round'"
+            ) from exc
+
+        if isinstance(team_slot, bool) or not isinstance(team_slot, int) or not (1 <= team_slot <= num_teams):
+            raise LeagueConfigError(
+                f"keeper {player_name!r} has team_slot {team_slot!r}; expected an integer in [1, {num_teams}]"
+            )
+        if isinstance(round_num, bool) or not isinstance(round_num, int) or not (1 <= round_num <= rounds):
+            raise LeagueConfigError(
+                f"keeper {player_name!r} has round {round_num!r}; expected an integer in [1, {rounds}]"
+            )
+
+        slot = (team_slot, round_num)
+        if slot in claimed:
+            raise LeagueConfigError(
+                f"team {team_slot} has two keepers costing round {round_num}: "
+                f"{claimed[slot]!r} and {player_name!r} -- a team can only forfeit that pick once"
+            )
+        claimed[slot] = player_name
+        keepers.append(Keeper(team_slot=team_slot, player_name=player_name, round=round_num))
+
+    return tuple(keepers)
+
+
 def load_league_settings(path: str | Path) -> LeagueSettings:
     path = Path(path)
     with path.open() as f:
@@ -89,6 +126,7 @@ def load_league_settings(path: str | Path) -> LeagueSettings:
     roster_slots = _parse_roster_slots(raw["roster_slots"])
     scoring = ScoringRules(points_per_stat=dict(raw["scoring"]))
     bench_offsets = _parse_bench_offsets(raw.get("bench_offsets"))
+    keepers = _parse_keepers(raw.get("keepers"), num_teams, roster_slots.roster_size())
 
     return LeagueSettings(
         name=raw["name"],
@@ -97,6 +135,7 @@ def load_league_settings(path: str | Path) -> LeagueSettings:
         scoring=scoring,
         draft_slot=draft_slot,
         bench_offsets=bench_offsets,
+        keepers=keepers,
         league_id=raw.get("league_id"),
         draft_id=raw.get("draft_id"),
     )
