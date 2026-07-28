@@ -1,19 +1,32 @@
-# Fantasy Football Snake Draft Optimizer
+# Fantasy Football Draft Tools
 
-A draft-day recommendation tool for two snake draft leagues:
+Draft-day recommendation tools for three leagues, sharing one valuation engine
+(projections + value-based drafting + tiering), parameterized per-league by
+scoring rules and roster construction. See `config/leagues/` for per-league
+settings.
+
+**Snake draft leagues:**
 
 - A live, in-person league (picks entered manually during the draft).
 - A Sleeper league (picks synced automatically via Sleeper's API).
 
-Both leagues share one recommendation engine (value-based drafting + tiering),
-parameterized per-league by scoring rules and roster construction. See
-`config/leagues/` for per-league settings.
+**Dynasty auction league:**
+
+- FFL-NY ("HARD STUFF"), a 12-team $300-cap dynasty auction with salary
+  escalation, franchise tags, rookie protection, and a steal round. See
+  [`docs/ffl-ny/PLAN.md`](docs/ffl-ny/PLAN.md) for the build plan and
+  [`docs/ffl-ny/league-rules.md`](docs/ffl-ny/league-rules.md) for the rules
+  the app models.
 
 ## Status
 
-Phase 0/1: data foundation and the VBD/tiering engine. See the project plan
-for the full phased roadmap (data ingestion -> engine -> live manual draft UI
--> Sleeper sync -> Monte Carlo opponent simulation -> optimizer stretch goal).
+**Snake leagues** — Phase 0/1: data foundation and the VBD/tiering engine.
+Roadmap: data ingestion -> engine -> live manual draft UI -> Sleeper sync ->
+Monte Carlo opponent simulation -> optimizer stretch goal.
+
+**FFL-NY auction** — planning complete, implementation not started. The
+auction engine (market-clearing pricing, cut/keep optimization, contract
+lifecycle) is additive: snake-specific modules are untouched.
 
 ## Setup
 
