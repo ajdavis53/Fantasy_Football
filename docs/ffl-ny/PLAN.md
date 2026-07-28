@@ -322,30 +322,25 @@ tracking toward next year's escalation and steal round.
 
 ## 6. Open questions
 
-Needed before Deliverable 0 (the 8/3 steal round):
+Most of the original blockers were answered by re-parsing the sheet's asset
+tables positionally — see
+[`2026-offseason-decisions.md`](./2026-offseason-decisions.md). Resolved:
+steal pick **#8 of 12**; **1** franchise tag owned outright; **no** active
+rookie protections and **no** 2025 tag, so rule 6.3 binds nothing; the four
+steal-proof players league-wide; and the posture — **rebuild while competing**,
+which sets the §3.4 dynasty weighting toward future seasons.
 
-1. **Do you hold a 2026 steal pick, and where in the order?** The rules sheet
-   tracks steal-pick and franchise-tag ownership, but merged cells destroy the
-   owner→asset mapping on export. Order follows 2025 final standings (§4).
-2. **Has the 2026 steal round already happened?** The roster file is dated
-   preseason and may predate it.
-3. **Taking over the team — what transferred?** Specifically the previous
-   owner's 2026 steal pick, franchise tag, and any rookie-protected players. Any
-   rookie protection currently in force changes the cut math directly.
+Still open, in priority order:
 
-Needed before Phase 2 (the 8/17 cut list):
-
-4. **Which players are rookie-protected or were franchise-tagged in 2025?**
-   Tagging the same player in consecutive years is barred (6.3), and protected
-   rookies are escalation-exempt (7.3).
-5. **Contend or rebuild?** The roster is second-worst in surplus and thin at RB,
-   which argues for a teardown — but that is your call, and it sets the dynasty
-   discount rate in §3.4.
-
-Lower priority:
-
-6. **Which OS?** pywebview covers macOS and Windows; it only affects packaging.
-7. **Can you export a sample MFL CSV** (rosters + salaries) so the import layer
-   is built against the real format?
-8. **Did any rules change in the 5/18/26 vote** that the exported sheet doesn't
+1. **Is the franchise tag's ≤$30 limit (6.1) actually enforced for 2026?** Every
+   2025 tag in the sheet violates it. It does not change this year's
+   recommendation, but the engine must encode the right rule.
+2. **Confirm the ownership lineage.** The 2025 rookie-protection table lists
+   *Mike* where the 2026 asset table lists *Andrew*; a separate, unrelated
+   "Andrew" held a different franchise 2020–2024. This determines whose tag
+   history binds you.
+3. **Can you export a sample MFL CSV** (rosters + salaries) so the import layer
+   is built against the real format rather than a guess?
+4. **Which OS?** pywebview covers macOS and Windows; it only affects packaging.
+5. **Did any rules change in the 5/18/26 vote** that the exported sheet doesn't
    reflect?

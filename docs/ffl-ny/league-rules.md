@@ -167,15 +167,49 @@ Champion 52.5%, 2nd 27.5%, 3rd 15%, 4th 5%. The lowest total scorer through
 week 17 wears a league-designed shirt to the office and to postseason
 functions.
 
+## 2026 asset ownership
+
+Recovered by re-parsing the sheet's asset table positionally — the flat export
+collapses the owner columns and destroys this mapping.
+
+| Owner | Team | 2026 steal pick | Franchise tags |
+|---|---|---:|---:|
+| Robison | Joseph the Tank Engine | 1 | 1 |
+| Jesse | Houle's Heros | 2 | 1 |
+| Bob | Slobberknocker | 3 | 1 |
+| Ben | Canal Cats | 4 | 1 |
+| John | The MidDermott's | 5 | 1 |
+| Jeremy | Lyon in Last | 6 | 1 |
+| Eric | Danheiser Dunces | 7 | **2** (compensation) |
+| **Andrew** | **Andrew's Team** | **8** | **1** |
+| Dan | Muff's Punters | 9 | 1 |
+| Greg | Pink Pony Club | 10 | 1 |
+| Lawless | Team X-Blades | 11 | 1 |
+| RJ | Tire Fire Sale | 12 | **2** (compensation) |
+
+Steal order encodes final 2025 standings (§4): RJ at 12 was champion; Robison at
+1 won the consolation bracket; **Andrew's franchise at 8 finished 6th overall**.
+
+**Steal-proof in 2026** — 2025 rookie protections held all year, so exempt from
+both escalation and steal attempts (7.3): Travis Hunter ($28, Robison), Emeka
+Egbuka ($20, RJ), Tyler Warren ($14, Jesse), Bhayshul Tuten ($1, John). Tuten
+sitting at $1 while every other minimum contract escalated to $6 confirms the
+exemption is applied in practice.
+
+**2025 franchise tags used:** John–Pearsall, Robison–Collins, Ben–Hurts,
+Jesse–Waddle, RJ–Mahomes & Rice, Eric–Hubbard, Greg–Jefferson,
+Lawless–Smith-Njigba, Dan–Achane, Jeremy–Burrow & Sutton. Andrew's franchise
+used none, so rule 6.3's consecutive-year bar restricts nothing in 2026.
+
 ## Open items to confirm with the commissioner
 
-1. **Who holds 2026 steal picks and franchise tags.** The sheet tracks this,
-   but the merged-cell export mangles the owner→asset mapping beyond safe
-   reconstruction. Needed before the 8/3 steal round.
-2. **Whether the 2026 steal round has already resolved** — the attached roster
-   file is dated pre-deadline and may predate it.
-3. **Andrew's Team's inherited assets** — as a team taken over mid-stream,
-   whether the previous owner's 2026 steal pick and franchise tag transfer.
-4. **Steal pick order for 2026**, which depends on 2025 final standings.
-5. **Whether any rule changes passed in the 5/18/26 vote** are reflected in the
+1. **Is 6.1's ≤$30 franchise-tag limit in force for 2026?** Every 2025 tag
+   listed above exceeds it — Jefferson $58, Achane $62, Collins $50,
+   Smith-Njigba $32 — so the limit is either new this year or has not been
+   enforced. Rule 6.1 is marked APPROVED and carries a footnote about
+   commissioner review and revocation, which reads like new enforcement.
+2. **Ownership lineage of Andrew's Team.** The 2025 rookie-protection table
+   lists *Mike* in the slot the 2026 asset table assigns to *Andrew*; a separate
+   "Andrew" held a different franchise 2020–2024 and left after that season.
+3. **Whether any rule changes passed in the 5/18/26 vote** are reflected in the
    sheet as exported.
