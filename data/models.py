@@ -141,6 +141,76 @@ class Keeper:
     round: int
 
 
+@dataclass(frozen=True)
+class ContractRules:
+    """A salary-cap league's contract lifecycle, as data rather than code.
+
+    Every constant here is a league rule that gets voted on annually, so they
+    belong in config where a rule change is a one-line edit. Defaults are
+    FFL-NY's 2026 rules; see `docs/ffl-ny/league-rules.md` for the section
+    numbers each one encodes.
+    """
+
+    salary_cap: int = 300
+    max_roster: int = 14
+    playoff_max_roster: int = 15
+    min_roster: int = 9
+    min_bid: int = 1
+
+    annual_escalation: int = 5
+    """Added to every retained player's salary after the season (14.2)."""
+
+    franchise_discount: int = 10
+    """Subtracted from salary when the franchise tag is applied (6.2)."""
+    franchise_max_prior_salary: int | None = 30
+    """Cap on a taggable player's previous-season salary (6.1); None disables.
+
+    Held as a toggle because every 2025 tag in the league's own records
+    exceeds it, so whether it binds in 2026 is an open question with the
+    commissioner -- not something to hardcode either way.
+    """
+    max_franchise_tags: int = 2
+
+    trade_discount: float = 0.9
+    """One-time-per-season multiplier applied for the receiving team (10.2)."""
+
+    steal_keep_factor: float = 0.85
+    """The defender pays this share of a steal offer's premium to keep (15.4)."""
+
+    rookie_protection_seasons: int = 2
+    """Rookie season plus one more, exempt from escalation and steals (7.3)."""
+    rookie_protection_max_salary: int = 30
+    max_rookie_protections: int = 2
+
+
+@dataclass(frozen=True)
+class Contract:
+    """One player's salary and the tags attached to it.
+
+    Salary is always whole dollars: every league operation that produces a
+    fraction (the trade discount, the steal keep price) specifies its own
+    rounding, so a contract never holds a fractional salary.
+    """
+
+    player_name: str
+    salary: int
+    position: Position | None = None
+    nfl_team: str | None = None
+    team: str | None = None
+    """Fantasy team holding the contract."""
+    rookie_protected_through: int | None = None
+    """Last season (inclusive) of rookie protection, or None."""
+    franchise_tagged_season: int | None = None
+    """Season a franchise tag was last applied, or None."""
+
+    def is_rookie_protected(self, season: int) -> bool:
+        return self.rookie_protected_through is not None and season <= self.rookie_protected_through
+
+    def is_steal_eligible(self, season: int) -> bool:
+        """Rookie protection is the only shield; franchise tags stopped protecting in 2024 (15.2)."""
+        return not self.is_rookie_protected(season)
+
+
 @dataclass
 class LeagueSettings:
     name: str
@@ -152,6 +222,8 @@ class LeagueSettings:
     bench_offsets: dict[Position, int] = field(default_factory=dict)
     """Per-position VORP baseline offset beyond the last starter (tunable)."""
     keepers: tuple[Keeper, ...] = ()
+    contract_rules: ContractRules | None = None
+    """Salary-cap lifecycle, for auction leagues. None means a snake league."""
     league_id: str | None = None
     """Sleeper league_id, if this league is API-backed."""
     draft_id: str | None = None
@@ -161,3 +233,7 @@ class LeagueSettings:
     def rounds(self) -> int:
         """One round per roster spot; keepers consume roster spots and picks alike."""
         return self.roster_slots.roster_size()
+
+    @property
+    def is_auction(self) -> bool:
+        return self.contract_rules is not None

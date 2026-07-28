@@ -1,0 +1,94 @@
+# FFL-NY ("HARD STUFF") -- 12-team dynasty auction, $300 cap.
+#
+# Rule sections cited below refer to docs/ffl-ny/league-rules.md, which
+# condenses the league's shared rules spreadsheet.
+#
+# Unlike the two snake leagues in this directory, this one is an auction, so
+# `draft_slot` carries no meaning -- nomination order is a random draw at the
+# table, then clockwise (5.5). It is set to 1 only because the shared schema
+# requires it.
+
+name: "FFL-NY"
+num_teams: 12
+draft_slot: 1
+
+# 9 starters (1.1). No kicker slot -- and no kicker scoring anywhere in the
+# rulebook -- so `positions_with_demand` drops kickers from the board
+# entirely. Bench is 5 during the regular season: 14 max roster (1.4) less
+# the 9 starters.
+roster_slots:
+  - name: QB
+    positions: [QB]
+    count: 1
+  - name: RB
+    positions: [RB]
+    count: 2
+  - name: WR
+    positions: [WR]
+    count: 2
+  - name: TE
+    positions: [TE]
+    count: 1
+  - name: FLEX
+    positions: [RB, WR, TE]
+    count: 2
+  - name: DEF
+    positions: [DEF]
+    count: 1
+  - name: BENCH
+    positions: [QB, RB, WR, TE, DEF]
+    count: 5
+
+# Half PPR (3.4.8: 0.5 per reception). Team-defense scoring is tiered on
+# points and yards allowed rather than per-stat, so it cannot be expressed
+# here; `data/projections.py` falls back to a positional curve for DEF, which
+# is adequate given every defense in the ETR pool prices within a dollar of
+# every other.
+scoring:
+  pass_yd: 0.04
+  pass_td: 4
+  pass_int: -2
+  rush_yd: 0.1
+  rush_td: 6
+  rec: 0.5
+  rec_yd: 0.1
+  rec_td: 6
+  fumble_lost: -2
+
+# Replacement baseline depth beyond the last starter. Shallower than the
+# snake leagues': 14-man rosters across 12 teams means only 168 players are
+# held league-wide, so the freely-available replacement sits closer to the
+# starter line than it does in a league with a deep bench.
+bench_offsets:
+  QB: 1
+  RB: 5
+  WR: 5
+  TE: 2
+  DEF: 1
+
+# The salary lifecycle (sections 5, 6, 7, 10, 14, 15).
+contracts:
+  salary_cap: 300              # 5.1
+  max_roster: 14               # 1.4 regular season
+  playoff_max_roster: 15       # 1.4 playoffs and offseason
+  min_roster: 9                # 1.3, matching the starter requirement
+  min_bid: 1                   # 5.7.1
+
+  annual_escalation: 5         # 14.2, applied after the Super Bowl
+  franchise_discount: 10       # 6.2
+  # 6.1 caps a taggable player's previous-season salary at 30. Every 2025 tag
+  # in the league's records exceeds this, so it is either new for 2026 or has
+  # gone unenforced -- set to null to disable if the commissioner confirms it
+  # does not bind.
+  franchise_max_prior_salary: 30
+  max_franchise_tags: 2        # 6.1
+
+  trade_discount: 0.9          # 10.2, one time per season, to the receiver
+  steal_keep_factor: 0.85      # 15.4
+
+  rookie_protection_seasons: 2 # 7.3, rookie season + 2nd played season
+  rookie_protection_max_salary: 30  # 7.2
+  max_rookie_protections: 2    # 7.4.2
+
+league_id: null
+draft_id: null

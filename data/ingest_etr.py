@@ -122,7 +122,10 @@ def _parse_pos_rank(raw: str | None) -> int | None:
 
 
 def _read_csv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
-    with path.open(newline="") as f:
+    # utf-8-sig, not utf-8: ETR's exports carry a BOM, which would otherwise
+    # ride along on the first header ("﻿Player") and defeat alias matching
+    # for whichever column happens to come first.
+    with path.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
             raise ETRIngestError(f"{path} has no header row")
@@ -233,3 +236,99 @@ def load_etr_rankings(
         )
 
     return players, rankings
+
+
+# ETR publishes one auction-value column per scoring format. FFL-NY awards 0.5
+# per reception (rule 3.4.8), so "half_ppr" is the correct default here; the
+# superflex columns never apply, since this league starts a single QB.
+AUCTION_VALUE_ALIASES: dict[str, list[str]] = {
+    "half_ppr": ["etr half ppr", "half ppr", "half"],
+    "full_ppr": ["etr full ppr", "full ppr", "ppr", "full"],
+    "std": ["etr std", "std", "standard"],
+    "superflex_half": ["etr superflex half", "superflex half"],
+    "superflex_full": ["etr superflex full", "superflex full"],
+}
+
+
+def _resolve_column(fieldnames: list[str], aliases: list[str], label: str) -> str:
+    normalized_to_actual = {_normalize(h): h for h in fieldnames}
+    for alias in aliases:
+        if alias in normalized_to_actual:
+            return normalized_to_actual[alias]
+    raise ETRIngestError(
+        f"no column found for {label!r}; tried {aliases} against {fieldnames}"
+    )
+
+
+def load_etr_auction_values(
+    path: str | Path,
+    value_column: str = "half_ppr",
+    sheet_name: str = DEFAULT_SHEET_NAME,
+    column_overrides: dict[str, str] | None = None,
+) -> tuple[list[Player], dict[str, float]]:
+    """Parse an ETR *auction values* export into (players, player_id -> value).
+
+    A separate entry point from `load_etr_rankings` because the auction export
+    is a different product with a different shape: it carries a dollar value
+    per scoring format and no overall rank at all, so it cannot satisfy the
+    rankings loader's required columns.
+
+    The values it returns are a market-clearing allocation of a from-scratch
+    auction -- ETR's Half PPR column sums to exactly $2,400, being 12 teams by
+    a $200 cap. They are therefore *not* directly usable in a keeper league;
+    pass them through `engine.auction.implied_vorp` and re-clear against the
+    money and slots the auction will actually have.
+    """
+    path = Path(path)
+    if path.suffix.lower() in (".xlsx", ".xlsm"):
+        fieldnames, rows = _read_xlsx_rows(path, sheet_name)
+    else:
+        fieldnames, rows = _read_csv_rows(path)
+
+    if value_column not in AUCTION_VALUE_ALIASES:
+        valid = ", ".join(sorted(AUCTION_VALUE_ALIASES))
+        raise ETRIngestError(f"unknown value_column {value_column!r}; expected one of {valid}")
+
+    overrides = column_overrides or {}
+    name_col = overrides.get("name") or _resolve_column(fieldnames, DEFAULT_COLUMN_ALIASES["name"], "name")
+    pos_col = overrides.get("position") or _resolve_column(fieldnames, DEFAULT_COLUMN_ALIASES["position"], "position")
+    team_col = overrides.get("team")
+    if team_col is None:
+        try:
+            team_col = _resolve_column(fieldnames, DEFAULT_COLUMN_ALIASES["team"], "team")
+        except ETRIngestError:
+            team_col = None
+    value_col = overrides.get(value_column) or _resolve_column(
+        fieldnames, AUCTION_VALUE_ALIASES[value_column], value_column
+    )
+
+    players: list[Player] = []
+    values: dict[str, float] = {}
+    for row_num, row in enumerate(rows, start=2):
+        name = (row.get(name_col) or "").strip()
+        if not name:
+            continue
+        position = _parse_position(row[pos_col])
+        team = (row.get(team_col) or "").strip() or None if team_col else None
+        value = _parse_optional_float(row.get(value_col))
+        if value is None:
+            continue
+
+        player_id = slugify_player_id(name, team, position)
+        if player_id in values:
+            raise ETRIngestError(
+                f"{path} row {row_num}: duplicate player_id {player_id!r} for {name!r}"
+            )
+        players.append(
+            Player(
+                player_id=player_id,
+                name=name,
+                nfl_team=team,
+                position=position,
+                eligible_positions=frozenset({position}),
+            )
+        )
+        values[player_id] = value
+    if not values:
+        raise ETRIngestError(f"{path} yielded no auction values from column {value_col!r}")
+    return players, values

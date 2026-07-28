@@ -24,9 +24,34 @@ settings.
 Roadmap: data ingestion -> engine -> live manual draft UI -> Sleeper sync ->
 Monte Carlo opponent simulation -> optimizer stretch goal.
 
-**FFL-NY auction** — planning complete, implementation not started. The
-auction engine (market-clearing pricing, cut/keep optimization, contract
-lifecycle) is additive: snake-specific modules are untouched.
+**FFL-NY auction** — Phase 1 complete: contract lifecycle, market-clearing
+auction pricing, cut/keep optimization, steal-round math, and multi-year
+contract valuation, all headless and tested. Next up is the cut/keep UI
+(Phase 2) and the live auction assistant (Phase 3). The auction work is
+additive — snake-specific modules are untouched.
+
+### Auction values are re-solved, not rescaled
+
+Published auction values (ETR's) are an allocation of a *from-scratch* draft:
+their Half PPR column sums to exactly $2,400, being 12 teams × $200. A keeper
+league breaks that — most of the money is committed to contracts and most of
+the players are owned — so rescaling by a cap ratio is the wrong
+transformation, not merely an imprecise one. `engine/auction.py` inverts
+published values back to value-over-replacement and re-clears them against the
+dollars and slots the auction will actually have; `engine/cuts.py` closes the
+loop, since those dollars depend on what every owner cuts and what they cut
+depends on prices.
+
+### Offseason report
+
+```bash
+uv run python scripts/ffl_ny_report.py path/to/rosters.xlsx path/to/etr_auction_values.csv
+```
+
+Runs the whole pipeline on the real files and prints the league cap position,
+both scenario brackets, your roster priced at equilibrium, and ranked steal
+targets. See [`docs/ffl-ny/2026-offseason-decisions.md`](docs/ffl-ny/2026-offseason-decisions.md)
+for the analysis it produced.
 
 ## Setup
 

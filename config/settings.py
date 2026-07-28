@@ -5,11 +5,76 @@ from pathlib import Path
 
 import yaml
 
-from data.models import Keeper, LeagueSettings, Position, RosterSlot, RosterSlots, ScoringRules
+from data.models import (
+    ContractRules,
+    Keeper,
+    LeagueSettings,
+    Position,
+    RosterSlot,
+    RosterSlots,
+    ScoringRules,
+)
 
 
 class LeagueConfigError(ValueError):
     pass
+
+
+def _parse_contract_rules(raw: dict | None) -> ContractRules | None:
+    """Build ContractRules from the `contracts:` block; absent means a snake league.
+
+    Every field is optional and falls back to the dataclass default, so a
+    league that matches the common rules only has to name what differs.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise LeagueConfigError(f"contracts must be a mapping, got {raw!r}")
+
+    defaults = ContractRules()
+    unknown = set(raw) - set(vars(defaults))
+    if unknown:
+        valid = ", ".join(sorted(vars(defaults)))
+        raise LeagueConfigError(
+            f"contracts has unknown key(s): {', '.join(sorted(unknown))}; valid keys are {valid}"
+        )
+
+    nullable = {"franchise_max_prior_salary"}
+    values: dict[str, object] = {}
+    for key, default in vars(defaults).items():
+        if key not in raw:
+            continue
+        value = raw[key]
+        if value is None and key in nullable:
+            values[key] = None
+            continue
+        if isinstance(default, float):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise LeagueConfigError(f"contracts.{key} must be a number, got {value!r}")
+            values[key] = float(value)
+        else:
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise LeagueConfigError(f"contracts.{key} must be an integer, got {value!r}")
+            values[key] = value
+
+    rules = ContractRules(**values)  # type: ignore[arg-type]
+    if rules.salary_cap < 1:
+        raise LeagueConfigError(f"contracts.salary_cap must be >= 1, got {rules.salary_cap}")
+    if rules.min_bid < 0:
+        raise LeagueConfigError(f"contracts.min_bid must be >= 0, got {rules.min_bid}")
+    if rules.max_roster < rules.min_roster:
+        raise LeagueConfigError(
+            f"contracts.max_roster ({rules.max_roster}) is below min_roster ({rules.min_roster})"
+        )
+    if not 0 < rules.steal_keep_factor <= 1:
+        raise LeagueConfigError(
+            f"contracts.steal_keep_factor must be in (0, 1], got {rules.steal_keep_factor}"
+        )
+    if not 0 < rules.trade_discount <= 1:
+        raise LeagueConfigError(
+            f"contracts.trade_discount must be in (0, 1], got {rules.trade_discount}"
+        )
+    return rules
 
 
 def _parse_positions(raw: list[str], slot_name: str) -> frozenset[Position]:
@@ -127,6 +192,7 @@ def load_league_settings(path: str | Path) -> LeagueSettings:
     scoring = ScoringRules(points_per_stat=dict(raw["scoring"]))
     bench_offsets = _parse_bench_offsets(raw.get("bench_offsets"))
     keepers = _parse_keepers(raw.get("keepers"), num_teams, roster_slots.roster_size())
+    contract_rules = _parse_contract_rules(raw.get("contracts"))
 
     return LeagueSettings(
         name=raw["name"],
@@ -136,6 +202,7 @@ def load_league_settings(path: str | Path) -> LeagueSettings:
         draft_slot=draft_slot,
         bench_offsets=bench_offsets,
         keepers=keepers,
+        contract_rules=contract_rules,
         league_id=raw.get("league_id"),
         draft_id=raw.get("draft_id"),
     )
