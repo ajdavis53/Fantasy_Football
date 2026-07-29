@@ -24,11 +24,11 @@ settings.
 Roadmap: data ingestion -> engine -> live manual draft UI -> Sleeper sync ->
 Monte Carlo opponent simulation -> optimizer stretch goal.
 
-**FFL-NY auction** — Phases 1 and 2 complete: the contract lifecycle,
+**FFL-NY auction** — Phases 1–3 complete: the contract lifecycle,
 market-clearing auction pricing, joint cut/keep/franchise-tag optimization,
-steal-round math, multi-year contract valuation, and a desktop app for the
-17 Aug drop deadline. Next is the live auction assistant (Phase 3). The
-auction work is additive — snake-specific modules are untouched.
+steal-round math, multi-year contract valuation, and a desktop app covering
+both the 17 Aug drop deadline and the 24 Aug live auction. The auction work is
+additive — snake-specific modules are untouched.
 
 ### Desktop app
 
@@ -36,11 +36,24 @@ auction work is additive — snake-specific modules are untouched.
 uv run python -m app.desktop path/to/rosters.xlsx path/to/etr_auction_values.csv
 ```
 
-Opens a native window (pywebview over a loopback FastAPI server) showing your
-roster priced at equilibrium, the optimizer's keep/cut/tag recommendation, both
-scenario brackets, and the league-wide cap position. Add `--no-window` to serve
-without a GUI toolkit. No network, no build step, no CDN — it has to work in
-somebody's living room on draft night.
+Opens a native window (pywebview over a loopback FastAPI server) with two
+screens:
+
+- **Cut / keep** — your roster priced at equilibrium, the optimizer's
+  keep/cut/tag recommendation, both scenario brackets, and the league-wide cap
+  position.
+- **Live auction** (`/auction`) — keyboard-driven bid entry, live budgets and
+  max bids for all 12 teams, inflation-adjusted prices, walk-away numbers, and
+  a nomination queue. Sales persist to SQLite as they are entered; `u` undoes.
+
+Add `--no-window` to serve without a GUI toolkit. No network, no build step, no
+CDN — it has to work in somebody's living room on draft night.
+
+Rehearse the auction end to end before the day:
+
+```bash
+uv run python scripts/mock_auction.py path/to/rosters.xlsx path/to/etr_auction_values.csv
+```
 
 ### Auction values are re-solved, not rescaled
 

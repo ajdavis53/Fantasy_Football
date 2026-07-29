@@ -21,6 +21,7 @@ import uvicorn
 
 from app.server import create_app
 from app.session import Session
+from app.store import AuctionStore
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LEAGUE = ROOT / "config" / "leagues" / "ffl_ny.yaml"
@@ -41,6 +42,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--season", type=int, default=2026)
     parser.add_argument("--value-column", default="half_ppr")
     parser.add_argument("--tags", type=int, default=1, help="franchise tags held this year")
+    parser.add_argument(
+        "--db", type=Path, default=ROOT / "data" / "cache" / "auction.db",
+        help="sale log; every auction sale is committed here as it is entered",
+    )
     parser.add_argument("--no-window", action="store_true", help="serve without a GUI window")
     parser.add_argument("--port", type=int, default=0)
     return parser
@@ -54,7 +59,7 @@ def main(argv: list[str] | None = None) -> None:
         my_team=args.team, season=args.season, value_column=args.value_column,
     )
     session.tags_available = args.tags
-    app = create_app(session)
+    app = create_app(session, AuctionStore(args.db))
     port = args.port or _free_port()
 
     if args.no_window:

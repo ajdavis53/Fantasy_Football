@@ -237,3 +237,136 @@ def test_apply_and_reset_routes(client, session):
 def test_unknown_player_id_does_not_crash_the_board(client):
     """Ids come from the rendered page, but a stale fragment must not 500."""
     assert client.post("/toggle/no-such-player").status_code == 200
+
+
+# -- live auction -----------------------------------------------------------
+
+def test_auction_page_renders(client):
+    response = client.get("/auction")
+    assert response.status_code == 200
+    body = html.unescape(response.text)
+    assert "Live Auction" in body
+    assert "Max bid" in body
+    assert "Inflation" in body
+
+
+def test_auction_opens_from_the_post_deadline_state(session):
+    """Your keep decisions are the auction's opening roster, not a fresh slate."""
+    session.apply_recommendation()
+    auction = session.start_auction()
+    kept = session.kept_contracts()
+
+    me = auction.status(session.my_team)
+    assert me.filled == len(kept)
+    assert me.budget == session.rules.salary_cap - sum(c.salary for c in kept)
+    assert auction.inflation() == pytest.approx(1.0)
+
+
+def test_kept_players_are_not_on_the_auction_board(session):
+    session.apply_recommendation()
+    auction = session.start_auction()
+    kept_ids = {session.key(c) for c in session.kept_contracts()}
+    assert not kept_ids & {p.player_id for p in auction.available()}
+
+
+def test_recording_a_sale_through_the_route(client, session):
+    client.get("/auction")
+    response = client.post(
+        "/auction/sale", data={"player": "Spare Wideout", "price": "20", "team": "Andrew's Team"}
+    )
+    assert response.status_code == 200
+    assert "Spare Wideout" in html.unescape(response.text)
+
+
+def test_a_partial_name_resolves(client):
+    client.get("/auction")
+    response = client.post(
+        "/auction/sale", data={"player": "spare arm", "price": "3", "team": "Rivals"}
+    )
+    assert "Spare Arm" in response.text
+    assert "No clear match" not in response.text
+
+
+def test_an_unresolvable_name_asks_rather_than_guessing(client):
+    """Recording the wrong player mid-auction costs more than a second question."""
+    client.get("/auction")
+    response = client.post(
+        "/auction/sale", data={"player": "zzzz nobody", "price": "5", "team": "Rivals"}
+    )
+    assert response.status_code == 200
+    assert "No clear match" in html.unescape(response.text)
+
+
+def test_undo_reverses_the_last_sale(client):
+    client.get("/auction")
+    client.post("/auction/sale", data={"player": "Spare Wideout", "price": "20", "team": "Rivals"})
+    response = client.post("/auction/undo")
+    assert "Undid Spare Wideout" in html.unescape(response.text)
+
+
+def test_undo_with_nothing_to_undo_is_reported_not_crashed(client):
+    client.get("/auction")
+    assert "Nothing to undo" in client.post("/auction/undo").text
+
+
+def test_a_bad_price_is_reported_on_the_board(client):
+    client.get("/auction")
+    response = client.post(
+        "/auction/sale", data={"player": "Spare Wideout", "price": "0", "team": "Rivals"}
+    )
+    assert "minimum bid" in html.unescape(response.text)
+
+
+def test_sales_are_persisted_when_a_store_is_attached(session, tmp_path):
+    from app.store import AuctionStore
+
+    store = AuctionStore(tmp_path / "auction.db")
+    client = TestClient(create_app(session, store))
+    client.get("/auction")
+    client.post("/auction/sale", data={"player": "Spare Wideout", "price": "20", "team": "Rivals"})
+
+    assert [s.player_name for s in store.load()] == ["Spare Wideout"]
+    client.post("/auction/undo")
+    assert store.load() == []
+
+
+def test_a_near_miss_never_auto_commits(client):
+    """A loose single match must not be recorded silently.
+
+    "Rival Star" is already rostered, so he is not on the board -- but he
+    shares a token with "Rival Filler", who is. `resolve_one`'s margin rule is
+    satisfied by one weak candidate in a thin field, so the auction path needs
+    an absolute score bar as well. Getting this wrong files a sale against the
+    wrong player, which at a live auction is both costly and easy to miss.
+    """
+    client.get("/auction")
+    response = client.post(
+        "/auction/sale", data={"player": "Rival Star", "price": "20", "team": "Rivals"}
+    )
+    body = html.unescape(response.text)
+    assert "No clear match" in body
+    assert "Undid" not in body
+
+
+def test_changing_the_cut_plan_reopens_the_auction(client, session):
+    """Whichever request opened this page first must not freeze the rosters."""
+    client.get("/auction")
+    before = html.unescape(client.get("/auction").text)
+
+    session.apply_recommendation()
+    after = html.unescape(client.get("/auction").text)
+
+    assert before != after
+    assert "Opening rosters are locked" not in after
+
+
+def test_the_opening_state_freezes_once_lots_have_sold(client, session):
+    """Rebuilding would strand the sale log against rosters it never saw."""
+    client.get("/auction")
+    client.post("/auction/sale", data={"player": "Spare Arm", "price": "4", "team": "Rivals"})
+
+    session.apply_recommendation()
+    body = html.unescape(client.get("/auction").text)
+
+    assert "Opening rosters are locked" in body
+    assert "Spare Arm" in body  # the sale log survives

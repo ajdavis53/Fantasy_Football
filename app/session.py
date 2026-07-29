@@ -30,6 +30,7 @@ from data.ingest_roster import (
 from data.models import Contract, ContractRules, LeagueSettings
 from engine.auction import AuctionMarket, max_affordable_bid
 from engine.cuts import LeagueEquilibrium, RetentionPolicy, TeamRoster, solve_equilibrium
+from engine.live_auction import LiveAuction, PlayerInfo, StartingPosition, par_prices
 from engine.replacement import PlayerValue, positions_with_demand
 from engine.roster_plan import RosterPlan, plan_roster
 
@@ -48,6 +49,7 @@ class Session:
     universe: dict[str, PlayerValue]
     links: dict[str, str]
     unmatched: tuple[Contract, ...]
+    player_info: dict[str, PlayerInfo]
     my_team: str
     season: int
     published_total: float
@@ -110,6 +112,11 @@ class Session:
             universe=universe,
             links=links,
             unmatched=tuple(unmatched),
+            player_info={
+                p.player_id: PlayerInfo(p.player_id, p.name, p.position, p.nfl_team)
+                for p in players
+                if p.player_id in universe
+            },
             my_team=my_team,
             season=season,
             published_total=sum(published.values()),
@@ -281,6 +288,54 @@ class Session:
             )
         return out
 
+    # -- live auction -------------------------------------------------------
+
+    def start_auction(self) -> LiveAuction:
+        """Open the auction from the post-drop-deadline state.
+
+        Your own starting position comes from the keep/cut decisions you made
+        on the board; every rival's comes from the optimizer's projection for
+        them under the active scenario. On 24 August those projections should
+        be replaced by re-importing the actual post-deadline workbook -- the
+        drop deadline is a week earlier, so the real rosters will be known.
+
+        Par prices are re-cleared over the auction's own board rather than
+        reused from the league equilibrium, so inflation opens at 1.0 and every
+        later reading measures the room rather than a normalization artefact.
+        """
+        equilibrium = self.equilibrium()
+
+        starting: list[StartingPosition] = []
+        kept_ids: set[str] = set()
+        for roster in self.rosters:
+            keep = (
+                self.kept_contracts() if roster.name == self.my_team
+                else equilibrium.plan(roster.name).keep
+            )
+            kept_ids.update(self.key(c) for c in keep)
+            starting.append(
+                StartingPosition(
+                    team=roster.name,
+                    committed_salary=sum(c.salary for c in keep),
+                    roster_count=len(keep),
+                )
+            )
+
+        dollars = sum(self.rules.salary_cap - s.committed_salary for s in starting)
+        slots = sum(max(0, self.rules.max_roster - s.roster_count) for s in starting)
+        board = [pv for pid, pv in self.universe.items() if pid not in kept_ids]
+
+        return LiveAuction.start(
+            rules=self.rules,
+            players={
+                pid: info for pid, info in self.player_info.items() if pid not in kept_ids
+            },
+            par=par_prices(board, dollars, slots, self.rules.min_bid),
+            starting=starting,
+            my_team=self.my_team,
+            rostered_ids=kept_ids,
+        )
+
     # -- mutations ----------------------------------------------------------
 
     def toggle_cut(self, player_id: str) -> None:
@@ -319,3 +374,4 @@ def _apply_protection(contract: Contract, season: int) -> Contract:
     if contract.player_name in ROOKIE_PROTECTED_THROUGH_2026:
         return replace(contract, rookie_protected_through=season)
     return contract
+

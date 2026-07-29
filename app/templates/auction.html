@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ session.league.name }} — Live Auction</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auction-mode">
+  <header class="topbar">
+    <div>
+      <h1>Live Auction <span class="muted">{{ session.season }}</span></h1>
+      <p class="muted">{{ session.my_team }} · 24 Aug, 8–11pm</p>
+    </div>
+    <div class="topbar-actions">
+      <a class="linkbutton" href="/">Cut / keep board</a>
+      <button data-post="/auction/undo" class="secondary" title="Reverse the last sale (u)">
+        Undo last
+      </button>
+    </div>
+  </header>
+
+  <main id="board">
+    {% include "_auction.html" %}
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

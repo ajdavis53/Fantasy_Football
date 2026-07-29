@@ -35,9 +35,12 @@ def players():
 @pytest.mark.parametrize(
     "raw,expected",
     [
+        # periods and apostrophes sit inside a name part, so they vanish
         ("A.J. Brown Jr.", "aj brown"),
         ("Ja'Marr Chase", "jamarr chase"),
-        ("Amon-Ra  St Brown", "amonra st brown"),
+        # hyphens join two parts, so they become a space and both stay matchable
+        ("Amon-Ra  St Brown", "amon ra st brown"),
+        ("Jaxon Smith-Njigba", "jaxon smith njigba"),
         ("Patrick Mahomes II", "patrick mahomes"),
     ],
 )
@@ -55,6 +58,16 @@ def test_matches_through_punctuation(players):
 
 def test_matches_hyphenated_name_typed_plainly(players):
     assert resolve_one("amon ra st brown", players).name == "Amon-Ra St Brown"
+
+
+def test_matches_half_of_a_hyphenated_name(players):
+    """"amon ra" is exactly the sort of half-remembered name this exists for.
+
+    Deleting the hyphen instead of splitting on it collapses the target to
+    "amonra", which shares no token with the query and scores 54 -- so this
+    match failed silently before.
+    """
+    assert resolve_one("amon ra", players).name == "Amon-Ra St Brown"
 
 
 def test_match_players_returns_ranked_candidates(players):
@@ -103,3 +116,21 @@ def test_unmatchable_keeper_raises_with_suggestions(players):
 
 def test_no_keepers_resolves_to_empty(players):
     assert resolve_keepers((), players) == {}
+
+
+def test_a_fully_typed_name_always_resolves(players):
+    """The margin rule must not reject a perfectly typed name.
+
+    "Bijan Robinson" and "Brian Robinson" share a surname and differ by two
+    letters in the forename, so a full, correct entry scores 100 against one
+    and low-90s against the other -- a margin under 15. Asking "did you mean
+    Bijan Robinson?" when the user typed exactly that is the wrong failure.
+    """
+    roster = players + [_player("Brian Robinson", Position.RB, "ATL")]
+    assert resolve_one("bijan robinson", roster).name == "Bijan Robinson"
+    assert resolve_one("Bijan Robinson", roster).name == "Bijan Robinson"
+
+
+def test_two_players_sharing_a_name_stay_ambiguous(players):
+    roster = players + [_player("AJ Brown", Position.WR, "PHI")]
+    assert resolve_one("aj brown", roster) is None

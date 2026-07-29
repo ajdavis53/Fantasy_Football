@@ -297,12 +297,24 @@ Every figure is overridable: click any contract to keep or cut it and the
 market re-solves, since your own releases add money and players to the
 auction. `Apply recommendation` takes the optimizer's plan wholesale.
 
-### Phase 3 — Live auction assistant (8/17 – 8/23) ← next
+### Phase 3 — Live auction assistant ✅
 
-Serves **8/24**. Bid entry, live cap and roster tracking for all 12 teams,
-dynamic inflation-adjusted pricing, precomputed walk-away prices, nomination
-queue. **Rehearsed against a full mock auction before draft night**, plus a
-paper fallback sheet in case the laptop dies.
+Serves **8/24**. Shipped: keyboard-driven bid entry with fuzzy name
+resolution, live cap/roster/max-bid tracking for all 12 teams, inflation
+that opens at exactly 1.0 and rescales the board after every sale,
+precomputed walk-away prices, positional tier drops, a contested-by list, and
+a nomination queue. Every sale commits to SQLite as it is entered, so a
+crash costs at most the lot on the clock, and undo unwinds memory and log
+together.
+
+Rehearsed with `scripts/mock_auction.py`, which drives a synthetic 130-lot
+auction through the real engine and asserts the invariants that only break
+late — nobody over the cap, no roster past 14, no player sold twice, and undo
+unwinding the whole thing.
+
+Still outstanding from this phase's plan: a **printed fallback board** for the
+laptop dying, and re-importing the actual post-deadline rosters on the day
+rather than using the optimizer's projections for rivals.
 
 ### Phase 4 — In-season (post-draft)
 

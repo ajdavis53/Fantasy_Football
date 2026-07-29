@@ -1,0 +1,178 @@
+{% if stale %}
+  <section class="panel warning">
+    <strong>Opening rosters are locked to the plan in force when the first lot sold.</strong>
+    <span class="muted">
+      You have changed the cut/keep board since. The sale log cannot be re-based onto
+      a different set of opening rosters, so undo back to an empty auction if the new
+      plan is the one you want to draft from.
+    </span>
+  </section>
+{% endif %}
+
+<section class="summary">
+  <div class="stat">
+    <span class="label">Your budget</span>
+    <span class="value">${{ me.budget }}</span>
+  </div>
+  <div class="stat">
+    <span class="label">Max bid</span>
+    <span class="value big">${{ me.max_bid }}</span>
+    <span class="note">reserving $1 per remaining slot</span>
+  </div>
+  <div class="stat">
+    <span class="label">Roster</span>
+    <span class="value">{{ me.filled }}<span class="unit">/{{ rules.max_roster }}</span></span>
+    <span class="note">{{ me.slots_to_fill }} to fill</span>
+  </div>
+  <div class="stat">
+    <span class="label">Inflation</span>
+    <span class="value {% if inflation > 1.05 %}bad{% elif inflation < 0.95 %}good{% endif %}">
+      {{ '%.2f' % inflation }}&times;
+    </span>
+    <span class="note">
+      {%- if inflation > 1.05 %}room has money — expect overpays
+      {%- elif inflation < 0.95 %}money went early — bargains coming
+      {%- else %}board is clearing at par{% endif -%}
+    </span>
+  </div>
+  <div class="stat">
+    <span class="label">Left in room</span>
+    <span class="value">${{ '{:,}'.format(auction.remaining_dollars()) }}</span>
+    <span class="note">{{ auction.remaining_slots() }} slots unfilled</span>
+  </div>
+  <div class="stat">
+    <span class="label">Sold</span>
+    <span class="value">{{ auction.sales | length }}</span>
+  </div>
+</section>
+
+<section class="panel entry">
+  <form data-post-form="/auction/sale" autocomplete="off">
+    <input type="text" name="player" list="available-players" placeholder="Player"
+           class="entry-player" autofocus required>
+    <input type="number" name="price" placeholder="$" class="entry-price"
+           min="{{ rules.min_bid }}" required>
+    <select name="team" class="entry-team" required>
+      {% for status in teams | sort(attribute='team') %}
+        <option value="{{ status.team }}" {% if status.is_me %}selected{% endif %}>
+          {{ status.team }}{% if status.is_me %} (you){% endif %}
+        </option>
+      {% endfor %}
+    </select>
+    <button type="submit">Record</button>
+  </form>
+  <datalist id="available-players">
+    {% for advice in board %}
+      <option value="{{ advice.player.name }}">
+        {{ advice.player.position }} {{ advice.player.nfl_team }} · ${{ '%.0f' % advice.adjusted }}
+      </option>
+    {% endfor %}
+  </datalist>
+  {% if error %}<p class="entry-error">{{ error }}</p>{% endif %}
+  {% if notice %}<p class="entry-notice">{{ notice }}</p>{% endif %}
+  <p class="muted small">
+    Type a partial name — it resolves fuzzily, and asks rather than guessing when
+    two players are close. Enter records and returns focus to the name field.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Board</h2>
+  <table class="roster">
+    <thead>
+      <tr>
+        <th>Player</th><th>Pos</th><th>Team</th>
+        <th class="num">Par</th><th class="num">Now</th><th class="num">Walk away</th>
+        <th class="num">Next best</th><th>Who can outbid you</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for advice in board %}
+        <tr>
+          <td>{{ advice.player.name }}</td>
+          <td>{{ advice.player.position }}</td>
+          <td class="muted">{{ advice.player.nfl_team or '' }}</td>
+          <td class="num muted">${{ '%.0f' % advice.par }}</td>
+          <td class="num">${{ '%.0f' % advice.adjusted }}</td>
+          <td class="num {% if advice.walk_away < advice.adjusted %}bad{% else %}good{% endif %}">
+            ${{ advice.walk_away }}
+          </td>
+          <td class="num muted" title="{{ advice.next_best.name if advice.next_best else 'nothing left at this position' }}">
+            {% if advice.next_best %}&minus;${{ '%.0f' % advice.next_best_gap }}{% else %}last{% endif %}
+          </td>
+          <td class="small muted">
+            {%- if advice.contenders -%}
+              {% for team, ceiling in advice.contenders[:3] %}{{ team }} (${{ ceiling }}){% if not loop.last %}, {% endif %}{% endfor %}
+              {%- if advice.contenders | length > 3 %} +{{ advice.contenders | length - 3 }}{% endif %}
+            {%- else -%}
+              <span class="good">nobody</span>
+            {%- endif -%}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted small">
+    <strong>Now</strong> is par rescaled by how the room has actually bid.
+    <strong>Walk away</strong> is that price capped by what you can afford — red means
+    you cannot reach the market. <strong>Next best</strong> is what losing the lot
+    really costs: the drop to the best remaining player at the same position.
+    Opting out is permanent under rule 5.7.2, so decide before bidding opens.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Nominate</h2>
+  <p class="muted">
+    Put up players you are <em>not</em> trying to win, while rivals still have money.
+    Every dollar they spend here is a dollar not bid against you later.
+  </p>
+  <ul class="nominations">
+    {% for advice in nominations %}
+      <li>
+        <strong>{{ advice.player.name }}</strong>
+        <span class="muted">{{ advice.player.position }} · ${{ '%.0f' % advice.adjusted }}
+        · {{ advice.contenders | length }} can bid</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Room</h2>
+  <table class="league">
+    <thead>
+      <tr>
+        <th>Team</th><th class="num">Budget</th><th class="num">Max bid</th>
+        <th class="num">Roster</th><th class="num">To fill</th><th class="num">Spent</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for status in teams %}
+        <tr class="{% if status.is_me %}mine{% endif %}{% if not status.can_bid %} spent-out{% endif %}">
+          <td>{{ status.team }}{% if status.is_me %} <span class="badge tag">YOU</span>{% endif %}</td>
+          <td class="num">${{ status.budget }}</td>
+          <td class="num">${{ status.max_bid }}</td>
+          <td class="num">{{ status.filled }}/{{ rules.max_roster }}</td>
+          <td class="num">{{ status.slots_to_fill }}</td>
+          <td class="num muted">${{ status.spent }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if recent %}
+  <section class="panel">
+    <h2>Recent sales</h2>
+    <ol class="sales">
+      {% for sale in recent %}
+        <li>
+          <strong>{{ sale.player_name }}</strong>
+          <span class="muted">{{ sale.position or '' }}</span>
+          → {{ sale.team }} at <strong>${{ sale.price }}</strong>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endif %}

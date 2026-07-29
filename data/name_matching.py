@@ -20,8 +20,24 @@ UNAMBIGUOUS_MARGIN = 15.0
 
 
 def normalize_name(name: str) -> str:
-    """Lowercase, strip punctuation and suffixes so "A.J. Brown Jr." ~ "aj brown"."""
-    cleaned = re.sub(r"[^a-z0-9\s]", "", name.lower())
+    """Lowercase, strip punctuation and suffixes so "A.J. Brown Jr." ~ "aj brown".
+
+    Punctuation is not all handled the same way, because it does not all mean
+    the same thing. Periods and apostrophes sit *inside* a name part -- "A.J.",
+    "Ja'Marr" -- and are deleted, so those become "aj" and "jamarr". Hyphens
+    *join* two parts -- "Amon-Ra", "Smith-Njigba" -- and become a space, so the
+    parts stay separately matchable.
+
+    That distinction is what makes token matching work on the names people
+    actually type at a draft table. Deleting hyphens too would collapse
+    "Amon-Ra St Brown" to "amonra st brown", which shares no token at all with
+    "amon ra" and scores 54 -- below any sane threshold, so the match this
+    module exists to make silently fails on exactly the awkward names a human
+    reaches for help with.
+    """
+    lowered = name.lower()
+    joined = re.sub(r"[-‐-―/]+", " ", lowered)
+    cleaned = re.sub(r"[^a-z0-9\s]", "", joined)
     cleaned = re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", "", cleaned)
     return re.sub(r"\s+", " ", cleaned).strip()
 
@@ -59,6 +75,19 @@ def resolve_one(
     Returning None on a close call is deliberate: recording the wrong player
     mid-draft is far more costly than asking which one was meant.
     """
+    # An exact name, typed in full, is not a close call -- it is the answer.
+    # Without this the margin rule rejects it whenever a similar name exists:
+    # "bijan robinson" scores 100, but "Brian Robinson" scores in the low 90s
+    # on the shared surname and near-identical forename, leaving a margin under
+    # 15. Refusing to record a perfectly typed name is the wrong failure, and
+    # it is worst for exactly the players whose names invite a typo.
+    normalized = normalize_name(query)
+    exact = [p for p in players if normalize_name(p.name) == normalized]
+    if len(exact) == 1:
+        return exact[0]
+    if len(exact) > 1:
+        return None  # two players genuinely share a name; ask
+
     matches = match_players(query, players, limit=2, threshold=threshold)
     if not matches:
         return None

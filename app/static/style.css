@@ -119,3 +119,42 @@ s { text-decoration-color: var(--muted); margin-left: 4px; }
   .panel { padding: 12px; }
   table { font-size: 13px; }
 }
+
+/* -- live auction --------------------------------------------------------- */
+
+.linkbutton {
+  font: inherit; color: var(--muted); text-decoration: none;
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px;
+}
+.linkbutton:hover { border-color: var(--accent); color: var(--text); }
+
+.stat .value.big { font-size: 30px; color: var(--accent); }
+
+/* The entry row is the whole interface during a lot, so it is sized to be
+   hit without looking and to stay put while the board below it churns. */
+.entry { position: sticky; top: 64px; z-index: 5; }
+.entry form { display: flex; gap: 8px; align-items: stretch; }
+.entry input, .entry select {
+  font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
+}
+.entry input:focus, .entry select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.entry-player { flex: 1 1 auto; font-size: 17px; }
+.entry-price { width: 96px; font-size: 17px; text-align: right; }
+.entry-team { flex: 0 0 200px; }
+.entry button[type="submit"] { padding: 10px 20px; font-weight: 600; }
+.entry-error { color: var(--bad); margin: 8px 0 0; }
+.entry-notice { color: var(--good); margin: 8px 0 0; }
+
+tr.spent-out td { opacity: .45; }
+.nominations, .sales { margin: 0; padding-left: 20px; }
+.nominations li, .sales li { margin-bottom: 3px; }
+
+@media (max-width: 720px) {
+  .entry form { flex-wrap: wrap; }
+  .entry-player { flex: 1 1 100%; }
+  .entry-team { flex: 1 1 auto; }
+}
+
+.panel.warning { border-color: var(--warn); }
+.panel.warning strong { display: block; margin-bottom: 4px; }
