@@ -285,14 +285,19 @@ contract lifecycle; 0.5 PPR projections; market-clearing auction pricing with
 the three scenarios; the dynasty layer. Verified by re-deriving the current
 rosters and checking that total value equals total money.
 
-### Phase 2 — Cut/keep optimizer + desktop shell v1 (8/8 – 8/16)
+### Phase 2 — Cut/keep optimizer + desktop shell v1 ✅
 
-Serves the **8/17** deadline. The pywebview shell, roster and league cap views,
-the cut/keep/franchise-tag optimizer, and scenario comparison. Ships with your
-recommended cut list, with each decision's marginal value shown so you can
-override on information the model doesn't have.
+Serves the **8/17** deadline. Shipped: the pywebview shell over a local
+FastAPI server, roster and league cap views, scenario switching, and the
+keep/cut/franchise-tag optimizer solved jointly — the tag is a decision
+variable inside the retention knapsack, because a $10 discount changes both
+whether a contract is worth keeping and how much cap is left for the others.
 
-### Phase 3 — Live auction assistant (8/17 – 8/23)
+Every figure is overridable: click any contract to keep or cut it and the
+market re-solves, since your own releases add money and players to the
+auction. `Apply recommendation` takes the optimizer's plan wholesale.
+
+### Phase 3 — Live auction assistant (8/17 – 8/23) ← next
 
 Serves **8/24**. Bid entry, live cap and roster tracking for all 12 teams,
 dynamic inflation-adjusted pricing, precomputed walk-away prices, nomination

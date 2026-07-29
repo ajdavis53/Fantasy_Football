@@ -1,0 +1,121 @@
+:root {
+  --bg: #12141a;
+  --panel: #1a1d26;
+  --line: #2a2f3d;
+  --text: #e6e8ee;
+  --muted: #8b93a7;
+  --good: #5fd08a;
+  --bad: #f2777a;
+  --accent: #6ea8ff;
+  --warn: #f0b849;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --line: #dfe3ea;
+    --text: #1a1d26;
+    --muted: #6b7280;
+    --good: #157f4a;
+    --bad: #b4232a;
+    --accent: #1f5fd0;
+    --warn: #a86a00;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+p { margin: 0 0 10px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.good { color: var(--good); }
+.bad { color: var(--bad); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  position: sticky; top: 0; z-index: 10;
+}
+.topbar p { margin: 2px 0 0; font-size: 12px; }
+.topbar-actions { display: flex; gap: 8px; }
+
+main { padding: 16px 20px 48px; max-width: 1100px; margin: 0 auto; }
+main.busy { opacity: .55; }
+main.error { outline: 2px solid var(--bad); outline-offset: 4px; }
+
+button {
+  font: inherit; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.secondary { color: var(--muted); }
+
+.summary {
+  display: flex; flex-wrap: wrap; gap: 8px 28px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 16px;
+}
+.summary.danger { border-color: var(--bad); }
+.stat { display: flex; flex-direction: column; min-width: 96px; }
+.stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.stat .value { font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat .unit { font-size: 13px; color: var(--muted); }
+.stat .note { font-size: 11px; color: var(--muted); }
+.stat .flag { font-size: 11px; color: var(--bad); }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 16px;
+}
+
+.scenarios { display: flex; flex-wrap: wrap; gap: 10px; }
+.scenario { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 14px; }
+.scenario.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.scenario-name { font-weight: 600; text-transform: capitalize; }
+.scenario-figures, .scenario-share { font-size: 12px; color: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); text-align: left; font-weight: 600;
+  padding: 6px 8px; border-bottom: 1px solid var(--line);
+}
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: none; }
+tr.cut td { opacity: .4; }
+tr.cut td:first-child { text-decoration: line-through; }
+tr.mine { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+.badge {
+  display: inline-block; font-size: 10px; letter-spacing: .05em;
+  padding: 1px 5px; border-radius: 4px; margin-left: 6px; vertical-align: middle;
+}
+.badge.tag { background: var(--accent); color: #fff; }
+.badge.protected { background: var(--warn); color: #12141a; }
+.badge.hint { border: 1px dashed var(--muted); color: var(--muted); }
+
+button.toggle { min-width: 62px; }
+button.toggle.keeping { border-color: var(--good); color: var(--good); }
+button.tag-btn.active { border-color: var(--accent); color: var(--accent); }
+
+.tags { margin: 0 0 8px; padding-left: 18px; }
+details summary { cursor: pointer; }
+s { text-decoration-color: var(--muted); margin-left: 4px; }
+
+@media (max-width: 720px) {
+  .summary { gap: 8px 18px; }
+  .stat .value { font-size: 18px; }
+  .panel { padding: 12px; }
+  table { font-size: 13px; }
+}

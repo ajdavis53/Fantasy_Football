@@ -1,0 +1,190 @@
+<section class="summary {% if summary.over_cap %}danger{% endif %}">
+  <div class="stat">
+    <span class="label">Roster</span>
+    <span class="value">{{ summary.kept }}<span class="unit">/{{ rules.max_roster }}</span></span>
+  </div>
+  <div class="stat">
+    <span class="label">Committed</span>
+    <span class="value">${{ summary.salary }}<span class="unit">/{{ summary.cap }}</span></span>
+    {% if summary.over_cap %}
+      <span class="flag">${{ summary.salary - summary.cap }} over — must cut by 17 Aug</span>
+    {% endif %}
+  </div>
+  <div class="stat">
+    <span class="label">Auction budget</span>
+    <span class="value">${{ summary.budget }}</span>
+  </div>
+  <div class="stat">
+    <span class="label">Slots to fill</span>
+    <span class="value">{{ summary.slots }}</span>
+  </div>
+  <div class="stat">
+    <span class="label">Max single bid</span>
+    <span class="value">${{ summary.max_bid }}</span>
+    <span class="note">reserving $1 per remaining slot</span>
+  </div>
+  <div class="stat">
+    <span class="label">Share of auction $</span>
+    <span class="value">
+      {%- if summary.share is none %}&mdash;{% else %}{{ '%.0f' % (summary.share * 100) }}%{% endif -%}
+    </span>
+    <span class="note">
+      {%- if summary.share is none %}no budget until you are under the cap
+      {%- else %}of ${{ '{:,}'.format(summary.auction_dollars) }} league-wide{% endif -%}
+    </span>
+  </div>
+  <div class="stat">
+    <span class="label">Tags</span>
+    <span class="value">{{ summary.tags_used }}<span class="unit">/{{ summary.tags_available }}</span></span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Scenario</h2>
+  <p class="muted">
+    Prices depend on how much the league releases, and that is not knowable in advance.
+    These two brackets it — check any decision against both.
+  </p>
+  <div class="scenarios">
+    {% for scenario in scenarios %}
+      <button data-post="/scenario" data-form="policy={{ scenario.policy }}"
+              class="scenario {% if scenario.active %}active{% endif %}">
+        <span class="scenario-name">{{ scenario.label }}</span>
+        <span class="scenario-figures">
+          ${{ '{:,}'.format(scenario.dollars) }} over {{ scenario.slots }} slots
+          · ${{ '%.0f' % scenario.per_slot }}/slot
+        </span>
+        <span class="scenario-share">
+          {%- if scenario.share is none %}no budget yet
+          {%- else %}you would hold {{ '%.0f' % (scenario.share * 100) }}%{% endif -%}
+        </span>
+      </button>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Recommendation</h2>
+  <p>
+    Keep <strong>{{ recommendation.keep | length }}</strong> at
+    <strong>${{ recommendation.salary }}</strong>, leaving
+    <strong>${{ recommendation.bid_budget(rules) }}</strong> to bid on
+    {{ recommendation.slots_to_fill(rules) }} slots.
+  </p>
+  {% if recommendation.tags %}
+    <ul class="tags">
+      {% for tag in recommendation.tags %}
+        <li>
+          Franchise tag <strong>{{ tag.contract.player_name }}</strong>:
+          ${{ tag.original_salary }} → ${{ tag.tagged_salary }}
+          <span class="muted">(+${{ '%.0f' % tag.gain }} surplus)</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No franchise tag is worth spending under this scenario.</p>
+  {% endif %}
+  {% if recommendation.rejected_tags %}
+    <details>
+      <summary class="muted">{{ recommendation.rejected_tags | length }} players cannot be tagged</summary>
+      <ul class="muted small">
+        {% for contract, reason in recommendation.rejected_tags %}
+          <li>{{ contract.player_name }} — {{ reason }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>{{ session.my_team }}</h2>
+  <table class="roster">
+    <thead>
+      <tr>
+        <th>Player</th><th>Pos</th><th>Team</th>
+        <th class="num">Salary</th><th class="num">Market</th><th class="num">Surplus</th>
+        <th></th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr class="{% if not row.kept %}cut{% endif %}">
+          <td>
+            {{ row.name }}
+            {% if row.tagged %}<span class="badge tag">TAG</span>{% endif %}
+            {% if row.protected %}<span class="badge protected">ROOKIE</span>{% endif %}
+            {% if row.recommended_keep and not row.kept %}<span class="badge hint">rec: keep</span>{% endif %}
+            {% if not row.recommended_keep and row.kept %}<span class="badge hint">rec: cut</span>{% endif %}
+          </td>
+          <td>{{ row.position }}</td>
+          <td class="muted">{{ row.nfl_team }}</td>
+          <td class="num">
+            ${{ row.salary }}
+            {% if row.tagged %}<s class="muted">${{ row.base_salary }}</s>{% endif %}
+          </td>
+          <td class="num">${{ '%.0f' % row.market }}</td>
+          <td class="num {% if row.surplus > 0 %}good{% elif row.surplus < 0 %}bad{% endif %}">
+            {{ '%+.0f' % row.surplus }}
+          </td>
+          <td>
+            <button data-post="/toggle/{{ row.id }}" class="toggle {% if row.kept %}keeping{% endif %}">
+              {{ 'Keep' if row.kept else 'Cut' }}
+            </button>
+          </td>
+          <td>
+            <button data-post="/tag/{{ row.id }}" class="tag-btn {% if row.tagged %}active{% endif %}"
+                    title="Franchise tag: −${{ rules.franchise_discount }} salary">
+              Tag
+            </button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted small">
+    Market is the equilibrium auction price under the selected scenario. Surplus is
+    market less salary — a contract is worth keeping only when it is positive.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>League cap position</h2>
+  <p class="muted">
+    Who is forced to sell before 17 Aug. Distressed owners set the auction's
+    supply, and they are the ones who surrender players cheaply in the steal round.
+    Rivals' last two columns are the optimizer's projection for them; your own row
+    reflects the decisions you have actually made above.
+  </p>
+  <table class="league">
+    <thead>
+      <tr>
+        <th>Team</th><th class="num">Players</th><th class="num">Committed</th>
+        <th class="num">Must cut</th><th class="num">Projected keep</th><th class="num">Projected budget</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in league_table %}
+        <tr class="{% if row.is_mine %}mine{% endif %}">
+          <td>{{ row.team }}</td>
+          <td class="num">{{ row.players }}</td>
+          <td class="num">${{ row.committed }}</td>
+          <td class="num {% if row.must_cut %}bad{% endif %}">
+            {% if row.must_cut %}${{ row.must_cut }}{% else %}—{% endif %}
+          </td>
+          <td class="num">{{ row.projected_keep }}</td>
+          <td class="num">${{ row.projected_budget }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if session.unmatched %}
+  <section class="panel">
+    <h2>Unranked</h2>
+    <p class="muted small">
+      Not in the rankings export, so priced at replacement level rather than zero:
+      {{ session.unmatched | map(attribute='player_name') | join(', ') }}
+    </p>
+  </section>
+{% endif %}

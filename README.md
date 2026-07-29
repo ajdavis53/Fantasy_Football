@@ -24,11 +24,23 @@ settings.
 Roadmap: data ingestion -> engine -> live manual draft UI -> Sleeper sync ->
 Monte Carlo opponent simulation -> optimizer stretch goal.
 
-**FFL-NY auction** — Phase 1 complete: contract lifecycle, market-clearing
-auction pricing, cut/keep optimization, steal-round math, and multi-year
-contract valuation, all headless and tested. Next up is the cut/keep UI
-(Phase 2) and the live auction assistant (Phase 3). The auction work is
-additive — snake-specific modules are untouched.
+**FFL-NY auction** — Phases 1 and 2 complete: the contract lifecycle,
+market-clearing auction pricing, joint cut/keep/franchise-tag optimization,
+steal-round math, multi-year contract valuation, and a desktop app for the
+17 Aug drop deadline. Next is the live auction assistant (Phase 3). The
+auction work is additive — snake-specific modules are untouched.
+
+### Desktop app
+
+```bash
+uv run python -m app.desktop path/to/rosters.xlsx path/to/etr_auction_values.csv
+```
+
+Opens a native window (pywebview over a loopback FastAPI server) showing your
+roster priced at equilibrium, the optimizer's keep/cut/tag recommendation, both
+scenario brackets, and the league-wide cap position. Add `--no-window` to serve
+without a GUI toolkit. No network, no build step, no CDN — it has to work in
+somebody's living room on draft night.
 
 ### Auction values are re-solved, not rescaled
 

@@ -1,0 +1,47 @@
+# A 2-team auction league, small enough that the cut and tag maths can be
+# checked by hand. Mirrors FFL-NY's structure at a fraction of the size.
+name: "Test Auction League"
+num_teams: 2
+draft_slot: 1
+
+roster_slots:
+  - name: QB
+    positions: [QB]
+    count: 1
+  - name: RB
+    positions: [RB]
+    count: 1
+  - name: WR
+    positions: [WR]
+    count: 1
+  - name: FLEX
+    positions: [RB, WR, TE]
+    count: 1
+  - name: DEF
+    positions: [DEF]
+    count: 1
+  - name: BENCH
+    positions: [QB, RB, WR, TE, DEF]
+    count: 1
+
+scoring:
+  pass_yd: 0.04
+  pass_td: 4
+  rush_yd: 0.1
+  rush_td: 6
+  rec: 0.5
+  rec_yd: 0.1
+  rec_td: 6
+
+bench_offsets:
+  QB: 1
+  RB: 2
+  WR: 2
+  TE: 1
+  DEF: 1
+
+contracts:
+  salary_cap: 100
+  max_roster: 6
+  min_roster: 5
+  franchise_max_prior_salary: 30

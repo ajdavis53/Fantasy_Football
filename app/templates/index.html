@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ league.name }} — Cut / Keep</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>{{ league.name }} <span class="muted">{{ session.season }}</span></h1>
+      <p class="muted">{{ session.my_team }} · drop, tag &amp; trade deadline 17 Aug</p>
+    </div>
+    <div class="topbar-actions">
+      <button data-post="/apply" title="Take the optimizer's keep/cut and tag choices">
+        Apply recommendation
+      </button>
+      <button data-post="/reset" class="secondary" title="Back to the roster as it stands today">
+        Reset
+      </button>
+    </div>
+  </header>
+
+  <main id="board">
+    {% include "_board.html" %}
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
