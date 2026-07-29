@@ -67,6 +67,18 @@ dollars and slots the auction will actually have; `engine/cuts.py` closes the
 loop, since those dollars depend on what every owner cuts and what they cut
 depends on prices.
 
+### Steal round
+
+```bash
+uv run python scripts/steal_report.py path/to/rosters.xlsx path/to/etr.csv --pick 8
+```
+
+Prices every stealable contract as both an acquisition and a weapon, and your
+own roster's exposure the other way. `--distress 0` models owners who value
+their players at full market — worth running, because the keep formula then
+guarantees no steal is worth making for value, and the gap between the two runs
+is the real uncertainty.
+
 ### Offseason report
 
 ```bash

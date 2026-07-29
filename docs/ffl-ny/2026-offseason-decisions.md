@@ -3,8 +3,9 @@
 Covers the three decisions due before the auction: the **8/3 steal round**, the
 **8/17 franchise tag**, and the **8/17 cut list**.
 
-All dollar figures come from a first-pass market model (§5). Treat the
-*direction* as reliable and the *precision* as not.
+All dollar figures come from the market model in `engine/` (§6). Treat the
+*direction* as reliable and the *precision* as not. §4 has been regenerated
+from the engine; the rest is the original analysis and matches it closely.
 
 ---
 
@@ -57,7 +58,7 @@ a current salary of **≤ $35**.
 |---|---|
 | Jauan Jennings $26, J. Williams $18, Dak Prescott $17, AJ Barner $16, Isaiah Likely $16, Dalton Schultz $16, Kareem Hunt $15, Dallas Goedert $14, Devin Singletary $10, Chris Godwin $8, DAL DEF $8 | Saquon Barkley $86, Davante Adams $61, A.J. Brown $55 |
 
-**Recommendation: tag Jameson Williams, $18 → $8.**
+**Recommendation: tag Jameson Williams, $18 → $8 — and do it before 8/3.**
 
 He is the only contract on the roster carrying positive surplus, and the tag
 roughly triples it (market ≈ $25). Every other eligible player is at or below
@@ -104,61 +105,118 @@ this round. Do not waste pick 8 on them:
 
 ## 4. Steal round — Monday 8/3, pick 8
 
+*Regenerated from the engine (`scripts/steal_report.py`), which computes pry
+prices exactly rather than from the closed form. The figures below supersede
+the first pass; where they differ it is by a dollar or two of rounding, plus
+one larger change explained under sensitivity.*
+
 ### The mechanic works against the attacker
 
-To pry a player loose you must push the keep price above what he is worth to his
-owner. Since `keep_price = ceil((offer − salary) × 0.85 + salary)`, that requires
+To pry a player loose you must push the keep price above what he is worth to
+his owner. Since `keep_price = ceil((offer − salary) × 0.85 + salary)`, the
+defender absorbs only 85 cents of each dollar of premium — so the offer that
+finally breaks him is **always above the player's market value**. Against a
+rational, cap-healthy owner a steal cannot generate surplus. That is not a
+quirk of these numbers; it is what the formula guarantees.
 
-```
-offer ≥ salary + (market − salary) / 0.85
-```
+### Sensitivity: the entire value case rests on one assumption
 
-At that number **you are paying above market**. Against a rational, cap-healthy
-owner, a steal cannot generate surplus. The value comes from two other places:
+Nine of twelve teams must shed salary by 8/17. The model assumes an owner in
+that position values his own contract *below* market, because keeping it forces
+a cut elsewhere — up to 30% below, scaled by how far over the cap he is. Change
+that one assumption and the conclusion inverts:
 
-1. **Cap-squeezed owners.** Nine of twelve teams are over the cap and must shed
-   salary by 8/17 regardless. For them, surrendering a player is relief, not
-   loss — so they let go below the theoretical threshold.
-2. **A failed steal still lands.** If they keep, their salary rises by
-   `(offer − salary) × 0.85`, which is real damage to a team that must already
-   cut.
+| Assumption | Best target | Value per dollar |
+|---|---|---:|
+| Owners are distressed (30% cap) | McCaffrey at $53 | **1.35** |
+| Owners value at full market | *nothing* | **≤ 1.00** |
 
-### Sequencing is in your favour
+At zero distress the whole board collapses to 1.00 or below — the formula's
+guarantee reasserting itself. So the question is not "which player" but
+"how squeezed are these twelve people, really". That is a judgement about
+people, not something the model can settle. The table below assumes they are
+squeezed; discount it accordingly.
 
-The steal round is **8/3**; the cap-compliance deadline is **8/17**. You do not
-need cap room on Monday — only by the 17th. Your effective steal budget is the
-**full $300**, not your current −$66.
+### Targets
 
-### Targets, ranked by surplus and owner distress
+Ranked at the pry price, assuming distress. `$/$` is value per dollar — the
+auction clears at market, so a dollar spent bidding buys a dollar of value, and
+anything at or below 1.00 means you should simply bid instead.
 
-| Player | Pos | Owner | Salary | Market | Surplus | Pry price | Owner over cap |
+| Player | Pos | Owner | Salary | Value | Pry | Damage if kept | $/$ |
 |---|---|---|---:|---:|---:|---:|---:|
-| **Trey McBride** | TE | Tire Fire Sale | 14 | 38 | +24 | 42 | **$80** |
-| **Rashee Rice** | WR | Tire Fire Sale | 15 | 35 | +20 | 39 | **$80** |
-| **Terry McLaurin** | WR | Tire Fire Sale | 10 | 27 | +17 | 30 | **$80** |
-| Christian McCaffrey | RB | Tire Fire Sale | 47 | 71 | +24 | 75 | **$80** |
-| Luther Burden | WR | Joseph the Tank | 8 | 25 | +17 | 28 | $70 |
-| Colston Loveland | TE | Joseph the Tank | 16 | 29 | +13 | 32 | $70 |
-| Puka Nacua | WR | The MidDermott's | 56 | 80 | +24 | 85 | $51 |
-| Justin Jefferson | WR | Pink Pony Club | 53 | 67 | +14 | 70 | $63 |
-| Jaxon Smith-Njigba | WR | Team X-Blades | 27 | 80 | **+53** | 90 | $0 |
-| Javonte Williams | RB | Team X-Blades | 11 | 35 | +24 | 40 | $0 |
+| **Christian McCaffrey** | RB | Tire Fire Sale | 47 | 72 | **53** | 6 | **1.35** |
+| Trey McBride | TE | Tire Fire Sale | 14 | 38 | **30** | **14** | 1.27 |
+| Rashee Rice | WR | Tire Fire Sale | 15 | 36 | **28** | 12 | 1.27 |
+| Justin Jefferson | WR | Pink Pony Club | 53 | 68 | 54 | 1 | 1.26 |
+| Colston Loveland | TE | Joseph the Tank | 16 | 30 | 24 | 7 | 1.24 |
+| Terry McLaurin | WR | Tire Fire Sale | 10 | 27 | 22 | 11 | 1.24 |
+| DeVonta Smith | WR | Muff's Punters | 27 | 33 | 27 | 0 | 1.23 |
+| Luther Burden | WR | Joseph the Tank | 8 | 25 | 21 | 12 | 1.19 |
+| Puka Nacua | WR | The MidDermott's | 56 | 81 | 69 | 12 | 1.18 |
+| Brock Bowers | TE | The MidDermott's | 26 | 39 | 34 | 7 | 1.15 |
 
-**Primary: Trey McBride at ~$42.** Best combination of surplus, age, and owner
-distress. RJ is $80 over the cap carrying 15 players and must gut the roster
-anyway; a $24 salary bump on a player he is already struggling to afford is
-punishing. Either you get a top-two dynasty TE at $42, or the league's strongest
-roster absorbs another $24 of cap damage. Both outcomes are good for you.
+**Four of the top seven sit on Tire Fire Sale.** RJ is $80 over the cap
+carrying 15 players — the most distressed owner in the league and the one this
+model therefore discounts hardest. That concentration is a feature of the
+assumption as much as of his roster; treat it as a reason to check the
+assumption, not as confirmation.
 
-**Note on Smith-Njigba:** by far the largest surplus, but Lawless is *under* the
-cap and can comfortably keep him, so the $90 pry price is real. At market ~$80
-it is only a ~$10 overpay for a 24-year-old WR1 — defensible in a dynasty
-rebuild, but it consumes 30% of your cap. Take it only if the cheaper targets
-are gone.
+### One offer, one number
 
-**Have contingencies ready.** Seven owners steal before you.
+A steal is a single sealed offer, so the ladder collapses to a choice about
+what you believe:
 
----
+- **McBride at $30** — if RJ is as squeezed as the cap table suggests, he lets
+  go and you have a top-two dynasty TE at $30 against a $38 market. If he is
+  not, he keeps him and absorbs **+$14 of salary** he can ill afford.
+- **McBride at $43** — the price at which he lets go even valuing at full
+  market. You would be paying $5 above market for the certainty.
+
+The floor under either is the same: RJ's cap gets worse. That part does not
+depend on the distress assumption at all.
+
+### Sequencing and depth
+
+Seven owners choose before you — Robison, Jesse, Bob, Ben, John, Jeremy, Eric
+— so plan **seven deep**. The steal round is 8/3 and cap compliance is not due
+until 8/17, so you do not need room on Monday: your effective budget is the
+full **$300**, not your current −$66.
+
+### Your own exposure
+
+After the recommended teardown you hold one contract, so there is almost
+nothing to defend: **Jameson Williams**, tagged to $8 against a ~$25 market.
+Someone must offer **$27** to pry him, and keeping him would then cost you $25.
+
+### Apply the tag before 8/3, not at the deadline
+
+Rule 6.1 permits the franchise tag any time up to the drop deadline, so it can
+be applied *before* the steal round — and it should be. A lower salary makes a
+player **harder** to steal, because the keep price climbs from a lower base at
+only 85 cents per dollar:
+
+| Jameson Williams | Salary | Offer needed to pry |
+|---|---:|---:|
+| Untagged | $18 | $26 |
+| Tagged before 8/3 | $8 | **$27** |
+
+It is one dollar at his valuation — marginal, but free, and it runs the
+opposite way to the intuition that a cheap contract is an easy target. On a
+more valuable player the same effect is worth considerably more.
+
+### What this pick is actually for
+
+Given the teardown leaves you with the largest auction budget in a league where
+nine teams are cap-crippled, your money works hardest *at the auction*, where
+the clearing price is market by construction and you have a structural edge.
+A steal, by contrast, is guaranteed to cost above market against any owner who
+is thinking clearly.
+
+So the reliable value in pick 8 is **the damage**, not the player: forcing the
+league's strongest roster to absorb another $14 of salary it must already shed.
+McBride at $30 does that whether or not RJ takes the bait. Treat any actual
+acquisition as the upside case rather than the plan.
 
 ## 5. The cut list — "drop everyone" is close to right
 
@@ -209,10 +267,11 @@ worth far more than any of these contracts.
 
 ### Recommendation
 
-1. **Tag Jameson Williams** ($18 → $8) and keep him.
+1. **Tag Jameson Williams** ($18 → $8) and keep him — before the 8/3 steal
+   round, which makes him marginally harder to steal (§4).
 2. **Cut the other thirteen.** Enter the auction with **$292**.
-3. **Steal McBride at ~$42** on 8/3 — before the drop deadline, so the cap cost
-   lands after your cuts.
+3. **Steal McBride at $30** on 8/3 — before the drop deadline, so the cap cost
+   lands after your cuts. If he stays, RJ absorbs $14 he cannot afford (§4).
 4. **At the auction, buy two rookies at ≤$30 and protect both** — steal-proof,
    escalation-frozen through 2027.
 
