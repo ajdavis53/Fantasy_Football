@@ -43,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--value-column", default="half_ppr")
     parser.add_argument("--tags", type=int, default=1, help="franchise tags held this year")
     parser.add_argument(
+        "--post-deadline", type=Path, default=None,
+        help="the real post-17-Aug roster workbook; replaces projected rivals with facts",
+    )
+    parser.add_argument(
         "--db", type=Path, default=ROOT / "data" / "cache" / "auction.db",
         help="sale log; every auction sale is committed here as it is entered",
     )
@@ -59,6 +63,9 @@ def main(argv: list[str] | None = None) -> None:
         my_team=args.team, season=args.season, value_column=args.value_column,
     )
     session.tags_available = args.tags
+    if args.post_deadline:
+        for issue in session.adopt_post_deadline_rosters(args.post_deadline):
+            print(f"  warning: {issue}")
     app = create_app(session, AuctionStore(args.db))
     port = args.port or _free_port()
 

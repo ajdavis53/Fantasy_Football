@@ -27,7 +27,7 @@ from data.ingest_roster import (
     link_contracts_to_players,
     load_roster_workbook,
 )
-from data.models import Contract, ContractRules, LeagueSettings
+from data.models import Contract, ContractRules, LeagueSettings, Player
 from engine.auction import AuctionMarket, max_affordable_bid
 from engine.cuts import LeagueEquilibrium, RetentionPolicy, TeamRoster, solve_equilibrium
 from engine.live_auction import LiveAuction, PlayerInfo, StartingPosition, par_prices
@@ -50,6 +50,7 @@ class Session:
     links: dict[str, str]
     unmatched: tuple[Contract, ...]
     player_info: dict[str, PlayerInfo]
+    all_players: tuple[Player, ...]
     my_team: str
     season: int
     published_total: float
@@ -59,6 +60,8 @@ class Session:
     """player_ids the owner has chosen to release."""
     tagged: set[str] = field(default_factory=set)
     tags_available: int = 1
+    post_deadline_source: str | None = None
+    """Set once the real post-deadline rosters have been imported."""
 
     _cache: dict = field(default_factory=dict, repr=False)
 
@@ -117,6 +120,7 @@ class Session:
                 for p in players
                 if p.player_id in universe
             },
+            all_players=tuple(players),
             my_team=my_team,
             season=season,
             published_total=sum(published.values()),
@@ -288,6 +292,67 @@ class Session:
             )
         return out
 
+    # -- post-deadline import -----------------------------------------------
+
+    def adopt_post_deadline_rosters(self, roster_path: Path) -> list[str]:
+        """Replace projected rosters with the real ones, and report any violations.
+
+        Until 17 August every rival's post-cut roster is the optimizer's guess.
+        After it they are simply known, and a guess is strictly worse than a
+        fact -- the auction's opening budgets are the single input every other
+        figure depends on, so drafting off projections when the real thing
+        exists would put a modelling error under every price on the board.
+
+        Your own cut/keep decisions are cleared, not merged: the new workbook
+        already reflects whatever you actually dropped, so re-applying them
+        would double-count.
+
+        Returns a list of compliance problems rather than raising. A team over
+        the cap after the deadline means the workbook is stale or the
+        commissioner has not finished processing drops -- worth surfacing
+        loudly, but not worth refusing to open the auction over.
+        """
+        imports = load_roster_workbook(roster_path)
+        rosters = tuple(
+            TeamRoster(
+                name=team.team,
+                contracts=tuple(_apply_protection(c, self.season) for c in team.contracts),
+            )
+            for team in imports
+        )
+        if not any(r.name == self.my_team for r in rosters):
+            names = ", ".join(r.name for r in rosters)
+            raise ValueError(
+                f"no team named {self.my_team!r} in {roster_path}; found: {names}"
+            )
+
+        contracts = [c for r in rosters for c in r.contracts]
+        links, unmatched = link_contracts_to_players(contracts, list(self.all_players))
+
+        self.rosters = rosters
+        self.links = links
+        self.unmatched = tuple(unmatched)
+        self.cut.clear()
+        self.tagged.clear()
+        self._cache.clear()
+        self.post_deadline_source = str(roster_path)
+        return self.compliance_issues()
+
+    def compliance_issues(self) -> list[str]:
+        """Teams that are over the cap or over the roster limit, in plain words."""
+        issues = []
+        for roster in self.rosters:
+            if roster.salary > self.rules.salary_cap:
+                issues.append(
+                    f"{roster.name} is ${roster.salary - self.rules.salary_cap} over the cap"
+                )
+            if len(roster.contracts) > self.rules.max_roster:
+                issues.append(
+                    f"{roster.name} has {len(roster.contracts)} players, "
+                    f"over the {self.rules.max_roster} limit"
+                )
+        return issues
+
     # -- live auction -------------------------------------------------------
 
     def start_auction(self) -> LiveAuction:
@@ -303,15 +368,17 @@ class Session:
         reused from the league equilibrium, so inflation opens at 1.0 and every
         later reading measures the room rather than a normalization artefact.
         """
-        equilibrium = self.equilibrium()
+        equilibrium = None if self.post_deadline_source else self.equilibrium()
 
         starting: list[StartingPosition] = []
         kept_ids: set[str] = set()
         for roster in self.rosters:
-            keep = (
-                self.kept_contracts() if roster.name == self.my_team
-                else equilibrium.plan(roster.name).keep
-            )
+            if self.post_deadline_source:
+                keep = roster.contracts  # the deadline has passed; these are facts
+            elif roster.name == self.my_team:
+                keep = self.kept_contracts()
+            else:
+                keep = equilibrium.plan(roster.name).keep
             kept_ids.update(self.key(c) for c in keep)
             starting.append(
                 StartingPosition(

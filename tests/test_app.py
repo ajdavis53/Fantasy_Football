@@ -71,6 +71,25 @@ def roster_xlsx(tmp_path) -> Path:
     return path
 
 
+def write_rosters(path: Path, mine=None, rivals=None) -> Path:
+    """A roster workbook with arbitrary contents, for post-deadline imports."""
+    workbook = Workbook()
+    sheet = workbook.active
+    blocks = [("Andrew's Team - Andrew", mine if mine is not None else MY_ROSTER[:2]),
+              ("Rivals - Someone", rivals if rivals is not None else RIVAL_ROSTER)]
+    for index, (header, rows) in enumerate(blocks):
+        col = 1 + index * 5
+        sheet.cell(row=1, column=col, value=header)
+        for offset, label in enumerate(("Player", "2025 Pts", "Bye", "Salary")):
+            sheet.cell(row=2, column=col + offset, value=label)
+        for r, (player, salary) in enumerate(rows, start=3):
+            sheet.cell(row=r, column=col, value=player)
+            sheet.cell(row=r, column=col + 3, value=salary)
+        sheet.cell(row=3 + len(rows), column=col, value=f"{len(rows)} Total Players")
+    workbook.save(path)
+    return path
+
+
 @pytest.fixture
 def session(roster_xlsx, etr_csv) -> Session:
     return Session.load(LEAGUE, roster_xlsx, etr_csv, my_team="Andrew's Team", season=2026)
@@ -370,3 +389,101 @@ def test_the_opening_state_freezes_once_lots_have_sold(client, session):
 
     assert "Opening rosters are locked" in body
     assert "Spare Arm" in body  # the sale log survives
+
+
+# -- post-deadline import ---------------------------------------------------
+
+def test_importing_real_rosters_replaces_projections(session, tmp_path):
+    """After 17 Aug a rival's roster is a fact, and a fact beats a guess."""
+    projected = session.start_auction().status("Rivals")
+    # The optimizer projects Rivals cutting Filler, who is priced well under his
+    # $30 salary. Suppose they keep him anyway -- owners do.
+    final = write_rosters(
+        tmp_path / "final.xlsx",
+        rivals=[("Star, Rival KC RB", 12), ("Filler, Rival GB TE", 30)],
+    )
+    session.adopt_post_deadline_rosters(final)
+    actual = session.start_auction().status("Rivals")
+
+    assert session.post_deadline_source == str(final)
+    assert projected.filled == 1  # the guess
+    assert actual.filled == 2  # the fact
+    assert actual.budget == session.rules.salary_cap - 42 < projected.budget
+
+
+def test_importing_clears_your_own_pending_decisions(session, tmp_path):
+    """The new workbook already reflects your drops; re-applying would double-count."""
+    session.apply_recommendation()
+    assert session.cut
+
+    session.adopt_post_deadline_rosters(write_rosters(tmp_path / "final.xlsx"))
+    assert session.cut == set()
+    assert session.tagged == set()
+
+
+def test_post_deadline_start_uses_every_teams_actual_roster(session, tmp_path):
+    session.adopt_post_deadline_rosters(write_rosters(tmp_path / "final.xlsx"))
+    auction = session.start_auction()
+
+    for roster in session.rosters:
+        status = auction.status(roster.name)
+        assert status.filled == len(roster.contracts)
+        assert status.budget == session.rules.salary_cap - roster.salary
+
+
+def test_compliance_problems_are_reported_not_raised(session, tmp_path):
+    """An over-cap roster after the deadline means stale data, not a reason to refuse."""
+    over = write_rosters(
+        tmp_path / "over.xlsx",
+        mine=[("Back, Bargain PHI RB", 90), ("Value, Fair DAL WR", 90)],
+    )
+    issues = session.adopt_post_deadline_rosters(over)
+
+    assert any("Andrew's Team" in issue and "over the cap" in issue for issue in issues)
+    assert session.start_auction().status("Andrew's Team").budget == -80
+
+
+def test_a_workbook_missing_your_team_is_rejected(session, tmp_path):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.cell(row=1, column=1, value="Someone Else - Nobody")
+    for offset, label in enumerate(("Player", "2025 Pts", "Bye", "Salary")):
+        sheet.cell(row=2, column=1 + offset, value=label)
+    sheet.cell(row=3, column=1, value="Star, Rival KC RB")
+    sheet.cell(row=3, column=4, value=5)
+    path = tmp_path / "wrong.xlsx"
+    workbook.save(path)
+
+    with pytest.raises(ValueError, match="no team named"):
+        session.adopt_post_deadline_rosters(path)
+
+
+def test_the_auction_page_says_whether_rivals_are_real(client, session, tmp_path):
+    assert "projections, not facts" in html.unescape(client.get("/auction").text)
+
+    session.adopt_post_deadline_rosters(write_rosters(tmp_path / "final.xlsx"))
+    assert "projections, not facts" not in html.unescape(client.get("/auction").text)
+
+
+# -- paper fallback ---------------------------------------------------------
+
+def test_paper_board_renders_the_essentials(session):
+    from scripts.fallback_board import render
+
+    page = html.unescape(render(session, rows=10))
+
+    assert "Max bid by budget and slots left".upper() in page.upper()
+    assert "Opting out is permanent" in page  # 5.7.2, the rule that costs you money
+    assert "PROJECTED, not final" in page  # provenance when rivals are guesses
+    assert page.count("<tr>") > 10
+    assert "Sold for" in page and "class='write'" in page  # blanks to write into
+
+
+def test_paper_board_states_when_rosters_are_real(session, tmp_path):
+    from scripts.fallback_board import render
+
+    session.adopt_post_deadline_rosters(write_rosters(tmp_path / "final.xlsx"))
+    page = render(session, rows=5)
+
+    assert "PROJECTED, not final" not in page
+    assert "post-deadline rosters from final.xlsx" in page

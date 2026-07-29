@@ -9,6 +9,28 @@
   </section>
 {% endif %}
 
+{% if post_deadline %}
+  {% if compliance %}
+    <section class="panel warning">
+      <strong>Imported rosters are not cap-compliant.</strong>
+      <span class="muted">
+        Either the workbook predates the commissioner finishing drops, or something
+        is genuinely wrong. Every budget below is computed from these numbers.
+      </span>
+      <ul class="muted small">{% for issue in compliance %}<li>{{ issue }}</li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+{% else %}
+  <section class="panel warning">
+    <strong>Rivals' opening rosters are projections, not facts.</strong>
+    <span class="muted">
+      Every rival's budget below assumes the optimizer's guess at their cuts. After the
+      17 Aug deadline, relaunch with <code>--post-deadline &lt;workbook&gt;</code> so the
+      auction opens from the real thing.
+    </span>
+  </section>
+{% endif %}
+
 <section class="summary">
   <div class="stat">
     <span class="label">Your budget</span>

@@ -67,6 +67,8 @@ def _auction_context(request: Request, app: FastAPI, notice: str = "", error: st
         "recent": list(reversed(auction.sales[-8:])),
         "notice": notice,
         "error": error,
+        "post_deadline": session.post_deadline_source,
+        "compliance": session.compliance_issues() if session.post_deadline_source else [],
         "stale": app.state.auction_opened_from != (
             frozenset(session.cut), frozenset(session.tagged), session.policy
         ),
