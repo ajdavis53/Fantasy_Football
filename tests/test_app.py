@@ -487,3 +487,46 @@ def test_paper_board_states_when_rosters_are_real(session, tmp_path):
 
     assert "PROJECTED, not final" not in page
     assert "post-deadline rosters from final.xlsx" in page
+
+
+# -- environment doctor -----------------------------------------------------
+
+def test_check_environment_flags_missing_files(roster_xlsx, etr_csv, tmp_path):
+    """Draft night is the wrong time to discover a bad path."""
+    from app.desktop import build_parser, check_environment
+
+    args = build_parser().parse_args([
+        str(roster_xlsx), str(tmp_path / "nope.csv"),
+        "--league", str(LEAGUE), "--db", str(tmp_path / "a.db"), "--port", "0",
+    ])
+    results = check_environment(args)
+    failures = [message for ok, message in results if not ok]
+
+    assert any("nope.csv" in message for message in failures)
+    assert not any("league config" in message for message in failures)
+
+
+def test_check_environment_passes_on_a_good_setup(roster_xlsx, etr_csv, tmp_path):
+    from app.desktop import build_parser, check_environment
+
+    args = build_parser().parse_args([
+        str(roster_xlsx), str(etr_csv),
+        "--league", str(LEAGUE), "--db", str(tmp_path / "a.db"), "--port", "0",
+    ])
+    results = check_environment(args)
+    failures = [m for ok, m in results if not ok]
+
+    # The GUI backend is the one check that legitimately fails headless.
+    assert all("pywebview" in message for message in failures), failures
+    assert any("importable" in message for ok, message in results if ok)
+
+
+def test_check_exits_nonzero_when_something_is_wrong(roster_xlsx, tmp_path, capsys):
+    from app.desktop import main
+
+    with pytest.raises(SystemExit) as exit_info:
+        main([str(roster_xlsx), str(tmp_path / "missing.csv"),
+              "--league", str(LEAGUE), "--db", str(tmp_path / "a.db"), "--check"])
+
+    assert exit_info.value.code == 1
+    assert "FAIL" in capsys.readouterr().out

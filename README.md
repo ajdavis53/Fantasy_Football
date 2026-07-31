@@ -46,8 +46,16 @@ screens:
   max bids for all 12 teams, inflation-adjusted prices, walk-away numbers, and
   a nomination queue. Sales persist to SQLite as they are entered; `u` undoes.
 
-Add `--no-window` to serve without a GUI toolkit. No network, no build step, no
-CDN — it has to work in somebody's living room on draft night.
+Check the machine before the day — this exits non-zero if anything would fail:
+
+```bash
+uv run python -m app.desktop rosters.xlsx etr.csv --check
+```
+
+`--no-window` serves without a GUI toolkit, and the app falls back to that
+automatically (printing the URL) if pywebview finds no backend, rather than
+dying in a traceback. No network, no build step, no CDN — it has to work in
+somebody's living room on draft night.
 
 Rehearse the auction end to end before the day:
 
