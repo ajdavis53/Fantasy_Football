@@ -4,8 +4,11 @@ Covers the three decisions due before the auction: the **8/3 steal round**, the
 **8/17 franchise tag**, and the **8/17 cut list**.
 
 All dollar figures come from the market model in `engine/` (§6). Treat the
-*direction* as reliable and the *precision* as not. §4 has been regenerated
-from the engine; the rest is the original analysis and matches it closely.
+*direction* as reliable and the *precision* as not.
+
+**Posture: win now, while building — leaning win now.** Revised from the
+original rebuild-leaning brief. What that changes, and what it does not, is
+set out in §7.
 
 ---
 
@@ -311,3 +314,58 @@ slots, and pool. This is a first pass, and it is wrong in known ways:
 - **The equilibrium assumes rational simultaneous cutting.** Real owners anchor
   on what they paid.
 - ETR values are also pre-camp; an updated sheet before 8/24 should be re-run.
+
+---
+
+## 7. Posture: win now, while building
+
+The brief changed after the original analysis — from rebuild-leaning to
+**win now while building, tilted toward now**. Most of the plan survives that
+change, which is worth stating plainly rather than quietly rewriting.
+
+### What does not change: the cut list
+
+Surplus is a *2026* number — market value against salary this season. The
+roster carries $366 of salary against roughly $216 of production, and that is
+bad now, not merely later. A win-now tilt makes the teardown **more** urgent,
+not less: every dollar trapped in a contract worth less than it costs is a
+dollar not buying production in August.
+
+Barkley at $86 for $60, Adams at $61 for $29, Brown at $55 for $43 — none of
+those become keeps because the horizon shortened. You would rather hold the
+cash.
+
+### What flips
+
+| Decision | Rebuild-leaning | Win-now-leaning |
+|---|---|---|
+| Steal pick 1 | McBride ($30) | **McCaffrey ($53)** — though see §4: this turns on his decline rate, not on posture |
+| Higgins & Gadsden | keep as lottery tickets | **release** — ETR sees ~$0 of 2026 production, and $11 buys $11 of it at auction |
+| Rookie protection | buy two at up to $30 | still take it, but **cheaply** — a $5–10 rookie is a fine 14th slot; a $30 one is production forgone |
+
+### The uncomfortable part: your edge is conditional
+
+A win-now plan built on "I will have the most money" only works if the rest of
+the league does *not* tear down:
+
+| If rivals... | League auction | Your share of money | Your share of slots |
+|---|---|---:|---:|
+| cut only to comply | $575 over 21 slots | **51%** | 62% |
+| tear down as you are | $2,819 over 130 slots | **10%** | 10% |
+
+In the first world you are buying half of everything available and should
+contend. In the second the auction clears efficiently, a dollar buys a dollar
+for everyone, and $292 across 13 slots makes you exactly average — you would
+have converted a bad roster into a median one. That is real progress from
+sixth, but it is not contention.
+
+Nothing you can do changes which world you land in. What you *can* do is take
+the value that does not depend on it: the McCaffrey steal is +$19 of 2026
+surplus either way, and it comes out of the strongest roster in the league.
+
+### Realistic expectation
+
+Tear down, hold the largest budget, take the best steal on the board, and let
+the league's own discipline decide whether that is a playoff roster or a
+median one. Wild card is the honest target; the upside case is the league
+being sentimental about contracts it cannot afford.
