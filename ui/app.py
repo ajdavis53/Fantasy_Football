@@ -105,6 +105,17 @@ def main() -> None:
             f"{len(league.keepers)} keepers"
         )
 
+        # Practising before draft day leaves a saved draft behind, which would
+        # otherwise silently reload on the day itself. Guarded by a checkbox so
+        # it cannot be hit by accident mid-draft.
+        st.divider()
+        confirm_reset = st.checkbox("Enable reset", key="confirm_reset")
+        if st.button("Start a new draft", disabled=not confirm_reset, type="secondary"):
+            st.session_state.pop(f"draft_state::{league.name}", None)
+            st.session_state.pop("pending_matches", None)
+            state_path(league.name).unlink(missing_ok=True)
+            st.rerun()
+
     if not etr_path or not Path(etr_path).exists():
         st.info("Enter the path to your ETR export in the sidebar to begin.")
         st.stop()
@@ -112,6 +123,10 @@ def main() -> None:
     board = load_board(league_path, etr_path)
     all_players = load_players(etr_path)
     state = get_draft_state(league)
+
+    if state.pick_history and "restored_notice" not in st.session_state:
+        st.session_state["restored_notice"] = True
+        st.toast(f"Resumed a saved draft ({len(state.pick_history)} picks already in).")
 
     board_by_id = {row["player_id"]: row for row in board}
     kept_ids = set(resolve_keepers(league.keepers, all_players).values())

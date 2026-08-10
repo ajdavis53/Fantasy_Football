@@ -40,6 +40,34 @@ ETR's Top-300 export has **no projected points and no tiers**, so:
   points take precedence automatically.
 - Tiers fall back to gap detection in `engine/tiers.py`.
 
+## Running the draft assistant
+
+```bash
+uv sync
+uv run streamlit run ui/app.py
+```
+
+Then in the sidebar: pick the league, paste the path to your ETR export, and
+set your draft slot. The first load takes 30-60s while it fits the projection
+curves from nflverse (needs network access); after that it is cached and
+instant.
+
+Type a partial name and press Enter to record a pick. An unambiguous match
+commits immediately; an ambiguous one ("brown") asks which player rather than
+guessing. The draft is saved after every pick and resumes automatically if the
+app restarts.
+
+**Practising before draft day:** a saved draft reloads on next launch, so clear
+it with "Start a new draft" in the sidebar (guarded by a checkbox) before the
+real thing.
+
+To try the UI without an ETR export, generate demo data first — it is filler,
+not a rankings product, so never draft off it:
+
+```bash
+uv run python scripts/make_sample_rankings.py data/sample_rankings.xlsx
+```
+
 ## Building a board
 
 ```bash
@@ -48,3 +76,12 @@ uv run python scripts/build_board.py config/leagues/sleeper_league.yaml path/to/
 
 The `EDGE` column is ADP minus ETR rank: positive means ETR rates a player
 above where the market drafts him (value), negative means the market reaches.
+
+## Mock drafts
+
+```bash
+uv run python scripts/mock_draft.py config/leagues/live_league.yaml path/to/etr.xlsx --slot 5
+```
+
+Runs a full draft with opponents picking by ADP, and fails if the resulting
+roster cannot field a legal starting lineup.

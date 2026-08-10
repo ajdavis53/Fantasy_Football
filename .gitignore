@@ -6,3 +6,4 @@ data/cache/
 *.egg-info/
 .DS_Store
 draft_state_*.json
+data/sample_rankings.xlsx
